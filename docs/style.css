@@ -1,0 +1,30 @@
+body {
+	margin: 0 auto;
+	max-width: 50em;
+
+	font-family: Fira Sans, DejaVu Sans, sans-serif;
+	color: #333;
+
+	line-height: 1.5;
+	padding: 1em;
+}
+
+h1 {
+	color: #ca1313;
+	text-shadow: 2px 2px 2px #ca131360;
+}
+
+pre {
+	background-color: #eee;
+	padding: 0.6em;
+}
+
+code {
+	background-color: #eee;
+	padding: 0.4em;
+}
+
+pre code {
+	background-color: initial;
+	padding: initial;
+}

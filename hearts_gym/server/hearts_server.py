@@ -1,0 +1,1200 @@
+"""
+TCP socket server to host Hearts games.
+"""
+
+import logging
+import math
+from multiprocessing.pool import ThreadPool
+from socketserver import BaseRequestHandler, BaseServer, TCPServer
+from threading import Lock, Thread
+import time
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
+
+from gym.utils import seeding
+import numpy as np
+
+from hearts_gym import utils
+from hearts_gym.envs.hearts_env import (
+    Action,
+    GymSeed,
+    HeartsEnv,
+    MultiInfo,
+    MultiIsDone,
+    MultiObservation,
+    MultiReward,
+)
+from hearts_gym.envs.hearts_game import HeartsGame
+from hearts_gym.envs.vec_hearts_env import VecHeartsEnv
+from hearts_gym.server import utils as server_utils
+from hearts_gym.server.mock_request import MockRequest
+from hearts_gym.server.client import Client
+from hearts_gym.server.utils import Address, Request
+
+SERVER_ADDRESS = '127.0.0.1'
+"""Address to host the server at.
+
+"127.0.0.1" or "localhost" will host a local server.
+"""
+PORT = 6087
+"""Port to use for the server."""
+
+
+def next_power(value: int, base: int) -> int:
+    """Return the next power of a given base for a given value.
+
+    Args:
+        value (int): Value to get the next power for.
+        base (int): Base of the powers.
+
+    Returns:
+        int: The next power of the given base after value.
+    """
+    prev_pow_exp = int(math.log(value, base))
+    next_pow = base ** (prev_pow_exp + 1)
+    return next_pow
+
+
+class HeartsServer(TCPServer):
+    """TCP server to host Hearts games.
+
+    Will wait until enough players have joined and then continually run
+    games, keeping track of several statistics.
+
+    When players leave during games or players have been waiting for too
+    long, simulated agents are inserted.
+
+    Games are played in parallel; this means clients will receive
+    different batch sizes due to the nature of the game.
+    """
+
+    OK_TIMEOUT_SEC = 2
+    """How long clients have to respond with an 'OK' message until they are
+    automatically disconnected.
+    """
+    SETUP_OK_TIMEOUT_SEC = 8
+    """How long clients have to respond with an 'OK' message to the metadata
+    message until they are automatically disconnected after.
+
+    We give clients more time here so they can get set up.
+    """
+
+    def __init__(
+            self,
+            server_address: Address,
+            RequestHandlerClass: Callable[
+                [Request, Address, BaseServer],
+                BaseRequestHandler,
+            ],
+            *,
+            num_players: int = 4,
+            deck_size: int = 52,
+            game: Optional[HeartsGame] = None,
+            mask_actions: bool = True,
+            seed: GymSeed = None,
+            num_parallel_games: int = 1024,
+            num_procs: int = utils.get_num_cpus() - 1,
+            max_num_games: Optional[int] = None,
+            accept_repeating_client_addresses: bool = True,
+            bind_and_activate: bool = True,
+    ) -> None:
+        """Construct a Hearts server.
+
+        See also `TCPServer.__init__`.
+
+        Args:
+            server_address (Address): Address and port to host the
+                server at.
+            RequestHandlerClass (Callable[
+                [Request, Address, BaseServer],
+                BaseRequestHandler,
+            ]): Request handler class to use.
+            num_players (int): Amount of players. Only used if `game` is
+                not `None`.
+            deck_size (int): Amount of cards in the deck. Only used if
+                `game` is not `None`.
+            game (Optional[HeartsGame]): A pre-initialized game simulator.
+            mask_actions (bool): Whether to enable action masking,
+                parameterizing the action space.
+            seed (GymSeed): Random number generator base seed.
+            num_parallel_games (int): How many games to play in parallel.
+                This is also approximately the batch size for the
+                observations times four. The batch size may be anywhere
+                between zero and this number.
+            num_procs (int): How many processes to use for playing the
+                parallel games.
+            max_num_games (Optional[int]): After how many games to
+                automatically disconnect all clients. If `None`, keep
+                connected indefinitely.
+            accept_repeating_client_addresses (bool): Whether clients
+                are allowed to connect multiple times from the same
+                address (only changing the port they connect from).
+            bind_and_activate (bool): Whether to automatically bind and
+                activate the server upon construction.
+        """
+        assert num_parallel_games > 0, 'must have at least one game'
+        max_receive_bytes = HeartsRequestHandler.calculate_max_receive_bytes(
+            num_parallel_games
+        )
+        assert max_receive_bytes < server_utils.MAX_PACKAGE_SIZE, (
+            'number of parallel games is too high; '
+            'could cause issues due to package size'
+        )
+        assert num_procs > 0, 'must have at least one process'
+        assert (
+            max_num_games is None
+            or max_num_games % num_parallel_games == 0
+        ), (
+            'maximum number of games must be divisible by number of '
+            'parallel games'
+        )
+
+        self.logger = logging.getLogger(__name__)
+
+        if num_procs > num_parallel_games:
+            num_procs = num_parallel_games
+            self.logger.warn(
+                f'Warning: set `num_procs = {num_parallel_games}`; '
+                f'cannot have more processes than games.'
+            )
+
+        self._accept_repeating_client_address = \
+            accept_repeating_client_addresses
+        self._max_num_clients = num_players
+
+        # FIXME Allow setting batch size per client
+        self.num_parallel_games = num_parallel_games
+        self.max_num_games = max_num_games
+
+        self._print_interval_sec = 10
+        """How long to wait between messages to a waiting client."""
+        self._client_change_lock = Lock()
+        self._waiter_threads: Dict[int, Thread] = {}
+
+        self.clients: Dict[int, Client] = {}
+
+        self.is_closed = False
+        self.needs_reset = True
+        self.num_games = 0
+        self.stats: List[Tuple[List[int], List[int]]] = []
+        self.num_illegals: List[int] = [0] * num_players
+        self.total_scores = [0] * num_players
+        self.total_placements = [[0] * num_players for _ in range(num_players)]
+
+        self.envs = VecHeartsEnv(
+            [
+                HeartsEnv(
+                    num_players=num_players,
+                    deck_size=deck_size,
+                    game=game,
+                    mask_actions=mask_actions,
+                    seed=self._add_to_seed(seed, i),
+                )
+                for i in range(self.num_parallel_games)
+            ],
+            num_procs=num_procs,
+        )
+
+        super().__init__(
+            server_address,
+            RequestHandlerClass,
+            bind_and_activate,
+        )
+        self.print_log(f'Server started on {server_address}.')
+
+    def print_log(self, message: str, log_level: int = logging.INFO):
+        """Print and log the given message.
+
+        Args:
+            message (str): What to print and log.
+            log_level (int): Logging level indicating the importance of
+                the log.
+        """
+        print(message)
+        self.logger.log(log_level, message)
+
+    @staticmethod
+    def _add_to_seed(seed: GymSeed, integer: int) -> GymSeed:
+        """Return the seed with an integer added to it.
+
+        Used to obtain different seeds.
+
+        Args:
+            seed (GymSeed): Base random number generator seed.
+            integer (int): Integer to modify the seed with.
+
+        Returns:
+            GymSeed: Seed modified according to the given integer.
+        """
+        if isinstance(seed, int):
+            return seed + integer
+
+        if isinstance(seed, str):
+            return str(integer) + seed
+
+        if seed is None:
+            return seed
+
+        raise TypeError('unknown seed type')
+
+    def _has_client_address(self, client_address: Address) -> bool:
+        """Return whether the given client address is already registered.
+
+        Note that this ignores the port portion of the address.
+
+        Args:
+            client_address (Address): Client address to query.
+
+        Returns:
+            bool: Whether the client address is already registered.
+        """
+        registered_addresses = (
+            client.address[0]
+            for client in self.clients.values()
+        )
+        return client_address[0] in registered_addresses
+
+    def verify_request(  # type: ignore[override]
+            self,
+            request: Request,
+            client_address: Address,
+    ) -> bool:
+        self.logger.info(f'Verifying {client_address}...')
+        if (
+                len(self.clients) >= self._max_num_clients
+                or (
+                    not self._accept_repeating_client_address
+                    and self._has_client_address(client_address)
+                )
+        ):
+            self.logger.info('Rejected.')
+            return False
+
+        self.logger.info('Accepted.')
+        return True
+
+    def find_free_index(self):
+        return next(
+            i
+            for i in range(self._max_num_clients)
+            if i not in self.clients
+        )
+
+    def register_client(
+            self,
+            request: Request,
+            client_address: Address,
+    ) -> Optional[Client]:
+        """Register the given client and return it if successful.
+        Otherwise, return `None`.
+
+        Args:
+            request (Request): Socket/request of the client.
+            client_address (Address): Address of the client.
+
+        Returns:
+            Optional[Client]: The registered client or `None`.
+        """
+        if isinstance(request, tuple):
+            request = request[1]
+        with self._client_change_lock:
+            # Sanity check just in case.
+            if (
+                    len(self.clients) >= self._max_num_clients
+                    or (
+                        not self._accept_repeating_client_address
+                        and self._has_client_address(client_address)
+                    )
+            ):
+                return None
+
+            free_index = self.find_free_index()
+
+            client = Client(free_index, request, client_address)
+            self.clients[free_index] = client
+            return client
+
+    def register_bot(
+            self,
+            client_index: Optional[int] = None,
+    ) -> Optional[Client]:
+        """Register a simulated agent and return it if successful.
+        Otherwise, return `None`.
+
+        Args:
+            client_index (Optional[int]): Index to register the
+                simulated agent at. If `None`, use the first free index.
+
+        Returns:
+            Optional[Client]: The registered client or `None`.
+        """
+        if client_index is None:
+            client_index = self.find_free_index()
+        client = self.register_client(
+            MockRequest(
+                self.envs.get_envs(),
+                client_index,
+                seed=seeding.hash_seed(),
+            ),
+            ('mock-client', client_index),
+        )
+
+        if client is not None:
+            self.logger.info(f'Registered bot at index {client_index}.')
+        return client
+
+    def unregister_client(
+            self,
+            client: Client,
+            replace_with_bot: bool,
+    ) -> None:
+        """Unregister the given client.
+
+        Args:
+            client (Client): Client to unregister.
+            replace_with_bot (bool): Whether to replace a lost client with a
+                simulated agent.
+        """
+        with self._client_change_lock:
+            client_index = client.player_index
+
+            self.shutdown_request(client.request)  # type: ignore[attr-defined]
+            client.is_registered = False
+            del self.clients[client_index]
+            if client_index in self._waiter_threads:
+                del self._waiter_threads[client_index]
+
+            if replace_with_bot:
+                self.register_bot(client_index)
+
+    def receive_name(
+            self,
+            client: Client,
+            timeout_sec: Optional[int] = None,
+    ) -> bool:
+        """Wait for a message containing a name from the given client.
+        Return whether the message was correctly received.
+
+        Args:
+            client (Client): Client to receive the name from.
+            timeout_sec (Optional[int]): How long to wait at maximum. If
+                `None`, use `HeartsServer.OK_TIMEOUT_SEC`.
+
+        Returns:
+            bool: Whether a name was correctly received in the allowed
+                time frame.
+        """
+        request = client.request
+        if timeout_sec is None:
+            timeout_sec = self.OK_TIMEOUT_SEC
+
+        prev_timeout = request.gettimeout()
+        request.settimeout(timeout_sec)
+
+        try:
+            data = request.recv(Client.MAX_NAME_BYTES)
+        except OSError:
+            request.settimeout(prev_timeout)
+            self.send_failable(
+                client,
+                (
+                    f'Please send a name with a length of '
+                    f'{Client.MAX_NAME_BYTES} bytes at maximum; '
+                    f'closing connection...'
+                ),
+            )
+            self.logger.warn(
+                f'Client {client.address} did not respond in time.')
+            self.unregister_client(client, False)
+            return False
+        except Exception:
+            self.logger.warn(f'Lost client {client.address}.')
+            self.unregister_client(client, False)
+            return False
+
+        request.settimeout(prev_timeout)
+
+        # We assume the client does not want to set a name.
+        if data == server_utils.OK_MSG:
+            return True
+
+        with self._client_change_lock:
+            client.set_name(data)
+            other_names = [
+                other_client.name
+                for other_client in self.clients.values()
+                if other_client is not client
+            ]
+            i = 2
+            while client.name in other_names:
+                client.set_name(data + f' ({i})'.encode())
+                i += 1
+
+        self.logger.info(
+            f'Client {client.address} is now called "{client.name}".')
+        return True
+
+    def _receive_ok(
+            self,
+            client: Client,
+            timeout_sec: Optional[int],
+            replace_with_bot: bool,
+    ) -> bool:
+        """Wait for an 'OK' message from the given client. Return
+        whether the message was correctly received.
+
+        Upon error, optionally replace the client with a
+        simulated agent.
+
+        Args:
+            client (Client): Client to receive the 'OK' from.
+            timeout_sec (Optional[int]): How long to wait at maximum. If
+                `None`, use `HeartsServer.OK_TIMEOUT_SEC`.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
+
+        Returns:
+            bool: Whether the message was correctly received in the
+                allowed time frame.
+        """
+        request = client.request
+        if timeout_sec is None:
+            timeout_sec = self.OK_TIMEOUT_SEC
+
+        prev_timeout = request.gettimeout()
+        request.settimeout(timeout_sec)
+
+        try:
+            data = request.recv(len(server_utils.OK_MSG))
+        except OSError:
+            request.settimeout(prev_timeout)
+            self.send_failable(
+                client,
+                (
+                    f'Please respond with "{server_utils.OK_MSG.decode()}"; '
+                    f'closing connection...'
+                ),
+            )
+            self.logger.warn(
+                f'Client {client.address} did not respond in time.')
+            self.unregister_client(client, replace_with_bot)
+            return False
+        except Exception:
+            self.logger.warn(f'Lost client {client.address}.')
+            self.unregister_client(client, replace_with_bot)
+            return False
+
+        request.settimeout(prev_timeout)
+        if data == server_utils.OK_MSG:
+            return True
+
+        self.send_failable(
+            client,
+            (
+                f'Please respond with "{server_utils.OK_MSG.decode()}"; '
+                f'closing connection...'
+            ),
+        )
+        self.unregister_client(client, replace_with_bot)
+        return False
+
+    def receive_ok(
+            self,
+            client: Client,
+            timeout_sec: Optional[int] = None,
+    ) -> bool:
+        """Wait for an 'OK' message from the given client. Return
+        whether the message was correctly received.
+
+        Args:
+            client (Client): Client to receive the 'OK' from.
+            timeout_sec (Optional[int]): How long to wait at maximum. If
+                `None`, use `HeartsServer.OK_TIMEOUT_SEC`.
+
+        Returns:
+            bool: Whether the message was correctly received in the
+                allowed time frame.
+        """
+        return self._receive_ok(client, timeout_sec, False)
+
+    def receive_ok_replacing(
+            self,
+            client: Client,
+            timeout_sec: Optional[int] = None,
+    ) -> bool:
+        """Wait for an 'OK' message from the given client. Return
+        whether the message was correctly received.
+
+        Upon error, replace the client with a simulated agent.
+
+        Args:
+            client (Client): Client to receive the 'OK' from.
+            timeout_sec (Optional[int]): How long to wait at maximum. If
+                `None`, use `HeartsServer.OK_TIMEOUT_SEC`.
+
+        Returns:
+            bool: Whether the message was correctly received in the
+                allowed time frame.
+        """
+        return self._receive_ok(client, timeout_sec, True)
+
+    def _send_hello(
+            self,
+            client: Client,
+    ) -> None:
+        """Receive a name, then send a greeting and server metadata
+        message to the given client.
+
+        Args:
+            client (Client): Client to receive a name from and send
+                hello to.
+        """
+        max_num_clients = self._max_num_clients
+        num_clients = len(self.clients)
+
+        message = (
+            f'{client.name} connected to server; '
+            f'{num_clients}/{max_num_clients} players connected'
+        )
+
+        if num_clients < max_num_clients:
+            message = message + '...'
+        else:
+            message = message + '!'
+
+        self.send_failable(client, message)
+
+        if not self.receive_ok(client):
+            return
+
+        env = self.envs[0]
+        metadata = {
+            'player_index': client.player_index,
+            'num_players': env.num_players,
+            'deck_size': env.deck_size,
+            'mask_actions': env.mask_actions,
+            'max_num_games': self.max_num_games,
+            'num_parallel_games': self.num_parallel_games,
+        }
+
+        self.send_failable(client, metadata)
+        self.receive_ok(client, self.SETUP_OK_TIMEOUT_SEC)
+
+    def _send_failable(
+            self,
+            client: Client,
+            data: Any,
+            replace_with_bot: bool,
+    ) -> bool:
+        """Send the given data to the given client, handling failure cases.
+        Return whether the message was correctly sent.
+
+        Upon error, optionally replace the client with a simulated agent.
+
+        Args:
+            client (Client): Client to send the data to.
+            data (Any): Data to send to the client.
+            replace_with_bot (bool): Whether to replace a lost client with a
+                simulated agent.
+
+        Returns:
+            bool: Whether the data was correctly sent to the client.
+        """
+        try:
+            if not isinstance(data, bytes):
+                data = server_utils.encode_data(data)
+            client.request.sendall(data)
+            return True
+        except Exception:
+            self.logger.warn(f'Lost client {client.address}.')
+            self.unregister_client(client, replace_with_bot)
+            return False
+
+    def send_failable(
+            self,
+            client: Client,
+            data: Any,
+    ) -> bool:
+        """Send the given data to the given client, handling failure cases.
+        Return whether the message was correctly sent.
+
+        Args:
+            client (Client): Client to send the data to.
+            data (Any): Data to send to the client.
+
+        Returns:
+            bool: Whether the data was correctly sent to the client.
+        """
+        return self._send_failable(client, data, False)
+
+    def send_failable_replacing(
+            self,
+            client: Client,
+            data: Any,
+    ) -> bool:
+        """Send the given data to the given client, handling failure cases.
+        Return whether the message was correctly sent.
+
+        Upon error, replace the client with a simulated agent.
+
+        Args:
+            client (Client): Client to send the data to.
+            data (Any): Data to send to the client.
+
+        Returns:
+            bool: Whether the data was correctly sent to the client.
+        """
+        return self._send_failable(client, data, True)
+
+    def _wait_for_players(
+            self,
+            client: Client,
+    ) -> None:
+        """Let the given client wait until enough clients have connected.
+        During the waiting, periodically send messages.
+
+        Supposed to be started in a new thread.
+
+        See also `self._start_waiter_thread`.
+
+        Args:
+            client (Client): Client that waits.
+        """
+        max_num_clients = self._max_num_clients
+        num_clients = len(self.clients)
+
+        start_time = time.time()
+        while not self.is_closed and client.is_registered:
+            prev_num_clients = num_clients
+            num_clients = len(self.clients)
+
+            if prev_num_clients != num_clients:
+                message = f'{num_clients}/{max_num_clients} players connected'
+                if num_clients >= max_num_clients:
+                    self.send_failable(client, message + '!')
+                    self.receive_ok(client)
+                    break
+                send_success = self.send_failable(client, message + '...')
+                if (
+                        not send_success
+                        or not self.receive_ok(client)
+                ):
+                    break
+
+            time.sleep(0.1)
+
+            curr_time = time.time()
+            if curr_time - start_time < self._print_interval_sec:
+                continue
+
+            self.print_log('Waiting...', logging.DEBUG)
+            start_time = curr_time
+            send_success = self.send_failable(
+                client, 'Waiting for more players...')
+            if (
+                    not send_success
+                    or not self.receive_ok(client)
+            ):
+                break
+
+    def _start_waiter_thread(
+            self,
+            client: Client,
+    ) -> None:
+        """Let the given client wait until enough clients have connected in
+        another thread.
+
+        See also `self._wait_for_players`.
+
+        Args:
+            client (Client): Client that should wait.
+        """
+        self.logger.info(f'Starting waiter thread for {client.address}...')
+        thread = Thread(target=self._wait_for_players, args=(client,))
+        with self._client_change_lock:
+            self._waiter_threads[client.player_index] = thread
+        thread.start()
+        self.logger.info('Thread started.')
+
+    def _join_waiters(self) -> None:
+        """Block until all waiter threads have completed."""
+        for thread in self._waiter_threads.values():
+            thread.join()
+        # No need to worry about locking anymore.
+        self._waiter_threads.clear()
+
+    def process_request(  # type: ignore[override]
+            self,
+            request: Request,
+            client_address: Address,
+    ) -> None:
+        self.logger.info(f'Registering {client_address}...')
+        client = self.register_client(request, client_address)
+        if client is None:
+            self.logger.warn('Failed.')
+            self.shutdown_request(request)  # type: ignore[attr-defined]
+            return
+
+        self.print_log(
+            f'Registered {client_address} at index {client.player_index}.')
+
+        self.receive_name(client)
+
+        self._send_hello(client)
+
+        if len(self.clients) < self._max_num_clients:
+            self._start_waiter_thread(client)
+            return
+
+        # FIXME use random agents when waiting for too long or flag given
+        self._join_waiters()
+
+        # We lost a client while joining threads.
+        if len(self.clients) < self._max_num_clients:
+            for client in self.clients.values():
+                self._start_waiter_thread(client)
+            return
+
+        self.print_log('Starting game loop...')
+        self.finish_request(
+            client.request,  # type: ignore[arg-type]
+            client.address,
+        )
+
+    def server_close(self) -> None:
+        self.is_closed = True
+        self._join_waiters()
+        super().server_close()
+
+
+class HeartsRequestHandler(BaseRequestHandler):
+    MAX_BYTES_PER_SEPARATE_ACTION = 2
+    """One individual action can be this many bytes long."""
+    MAX_BYTES_PER_ACTION_UNPADDED = (
+        MAX_BYTES_PER_SEPARATE_ACTION + len(server_utils.ACTION_SEPARATOR))
+    """One action can be `MAX_BYTES_PER_SEPARATE_ACTION` bytes long.
+    In addition, we have the comma as a separator.
+    """
+    MAX_BYTES_PER_ACTION = next_power(MAX_BYTES_PER_ACTION_UNPADDED, 2)
+    """`MAX_BYTES_PER_SEPARATE_ACTION_UNPADDED` padded towards a power
+    of two.
+    """
+    assert (
+        math.log(MAX_BYTES_PER_ACTION, 2) % 1 == 0
+    ), '`MAX_BYTES_PER_ACTION` must be a power of two'
+
+    PARSE_FAIL_TOLERANCE = 2
+    OK_TIMEOUT_SEC = 2
+
+    @staticmethod
+    def calculate_max_receive_bytes(num_parallel_games: int) -> int:
+        """Return the maximum amount of bytes that may be sensibly
+        received from a client.
+
+        Args:
+            num_parallel_games (int): Amount of games played in parallel.
+
+        Returns:
+            int: Maximum amount of bytes that will be received from
+                a client.
+        """
+        return num_parallel_games * HeartsRequestHandler.MAX_BYTES_PER_ACTION
+
+    def setup(self) -> None:
+        assert isinstance(self.server, HeartsServer), \
+            'received unknown server type'
+        self.server: HeartsServer
+        self.max_receive_bytes = \
+            self.calculate_max_receive_bytes(self.server.num_parallel_games)
+
+        num_players = len(self.server.clients)
+        self._communicators = ThreadPool(processes=num_players)
+
+    def _parse_message(
+            self,
+            player_index: int,
+            client: Client,
+    ) -> List[Action]:
+        """Parse a message received by the given client.
+
+        Args:
+            player_index (int): Which player we are getting the
+                message from.
+            client (Client): Client to receive the message from.
+
+        Returns:
+            List[Action]: Actions contained in the message or a default
+                if there was an error.
+        """
+        for _ in range(self.PARSE_FAIL_TOLERANCE + 1):
+            try:
+                data = client.request.recv(self.max_receive_bytes)
+            except Exception:
+                self.server.logger.warn(f'Lost client {client.address}.')
+                self.server.unregister_client(client, True)
+                # Get random action
+                data = client.request.recv(self.max_receive_bytes)
+
+            self.server.logger.debug(f'Received data:\n{data.decode()}')
+            try:
+                actions = server_utils.decode_actions(data)
+            except Exception:
+                self.server.logger.warn('Error parsing data; ignoring...')
+                self.server.logger.warn(f'Data that errored:\n{str(data)}')
+                self.server.send_failable_replacing(
+                    client,
+                    (
+                        f'Actions were malformed. Please submit at maximum '
+                        f'{self.max_receive_bytes} bytes which are your '
+                        f'actions (a comma-separated list of integers) as a '
+                        f'string. Do not encode the message in any other '
+                        f'form. To submit no action, submit just a comma.'
+                    ),
+                )
+                continue
+            return actions
+
+        if not self.server.envs.mask_actions:
+            return [
+                0
+                for env in self.server.envs
+                if env.active_player_index == player_index
+            ]
+        return [
+            env.get_legal_actions()[0]
+            for env in self.server.envs
+            if env.active_player_index == player_index
+        ]
+
+    def _parse_messages(self) -> List[List[Action]]:
+        """Receive and parse messages for each client in parallel.
+        Return the parsed actions.
+
+        Returns:
+            List[List[Action]]: Actions contained in the messages.
+        """
+        num_players = len(self.server.clients)
+        clients = self.server.clients
+
+        return self._communicators.starmap(
+            self._parse_message,
+            ((i, clients[i]) for i in range(num_players)),
+        )
+
+    @staticmethod
+    def _tree_map(func: Callable[[Any], Any], tree: Any) -> Any:
+        """Recursively map the given function over the given
+        tree-like object.
+
+        Note that strings are assumed to be atomic.
+
+        Contrary to what the name suggests, the functionality is only
+        very basic, supporting only a few Python primitive types.
+
+        Args:
+            func (Callable[[Any], Any]): Function to map over the tree.
+            tree (Any): Tree-like to map over.
+
+        Returns:
+            Any: The tree-like with the mapping applied.
+        """
+        if isinstance(tree, dict):
+            return {key: HeartsRequestHandler._tree_map(func, value)
+                    for (key, value) in tree.items()}
+        if isinstance(tree, list):
+            return [HeartsRequestHandler._tree_map(func, value)
+                    for value in tree]
+        if isinstance(tree, tuple):
+            return tuple(HeartsRequestHandler._tree_map(func, value)
+                         for value in tree)
+        return func(tree)
+
+    @staticmethod
+    def _to_primitive(data: Any) -> Any:
+        """Convert the given data to a primitive Python type.
+
+        Contrary to what the name suggests, the functionality is
+        very basic.
+
+        Args:
+            data (Any): Object to convert to a primitive.
+
+        Returns:
+            Any: Primitive representation of `data`.
+        """
+        if isinstance(data, np.ndarray):
+            return list(map(HeartsRequestHandler._to_primitive, data))
+        if isinstance(data, np.integer):
+            return int(data)
+        if isinstance(data, np.floating):
+            return float(data)
+        if hasattr(data, '__dict__'):
+            return vars(data)
+        if hasattr(data, '__slots__'):
+            return tuple(
+                getattr(data, slot)
+                if hasattr(data, slot)
+                else None
+                for slot in data.__slots__
+            )
+        return data
+
+    def _encode_data(self, data: Any) -> bytes:
+        """Return the given data encoded as a message between client
+        and server.
+
+        Args:
+            data (Any): Data to encode for sending.
+
+        Returns:
+            bytes: Encoded data.
+        """
+        self.server.logger.debug(f'Data before tree map:\n{data}')
+        data = self._tree_map(self._to_primitive, data)
+        self.server.logger.debug(f'Data after tree map:\n{data}')
+        return server_utils.encode_data(data)
+
+    def _send_shard(
+            self,
+            player_index: int,
+            data: Union[
+                List[MultiObservation],
+                List[Tuple[
+                    MultiObservation,
+                    MultiReward,
+                    MultiIsDone,
+                    MultiInfo,
+                ]],
+            ]
+    ) -> None:
+        """Send the given data to the client corresponding to the
+        given index.
+
+        Args:
+            player_index (int): Index of the client the shard should be
+                sent towards.
+            data (Union[
+                List[MultiObservation],
+                List[Tuple[
+                    MultiObservation,
+                    MultiReward,
+                    MultiIsDone,
+                    MultiInfo,
+                ]],
+            ]): Data to send to the client.
+        """
+        data: bytes = self._encode_data(data)
+        self.server.logger.debug(f'Sending to {player_index}:\n{str(data)}')
+        client = self.server.clients[player_index]
+        self.server.send_failable_replacing(client, data)
+
+    def _distribute_return_data(
+            self,
+            return_data: Union[
+                List[MultiObservation],
+                List[Tuple[
+                    MultiObservation,
+                    MultiReward,
+                    MultiIsDone,
+                    MultiInfo,
+                ]],
+            ],
+    ) -> None:
+        """Distribute the given data among the connected clients.
+        Send the partitioned data to each client in parallel.
+
+        Distributing means to partition the data so that each client
+        receives the data meant for it.
+
+        Args:
+            return_data (Union[
+                List[MultiObservation],
+                List[Tuple[
+                    MultiObservation,
+                    MultiReward,
+                    MultiIsDone,
+                    MultiInfo,
+                ]],
+            ]): Environment information received from the parallely
+                processed environments.
+        """
+        num_players = len(self.server.clients)
+        distributed_data: List[List[Union[
+            MultiObservation,
+            Tuple[
+                MultiObservation,
+                MultiReward,
+                MultiIsDone,
+                MultiInfo,
+            ],
+        ]]] = [[] for _ in range(num_players)]
+
+        for (data, env) in zip(return_data, self.server.envs):
+            active_player_index = env.active_player_index
+            active_player_data = distributed_data[active_player_index]
+            active_player_data.append(data)
+
+        self._communicators.starmap(
+            self._send_shard,
+            enumerate(distributed_data),
+        )
+
+    def _order_player_actions(
+            self,
+            player_actions: List[List[Action]],
+    ) -> Iterator[Action]:
+        """Return an iterator over the given actions for each player,
+        sorted so each action matches the corresponding environment.
+
+        Args:
+            player_actions (List[List[Action]]): List of actions for
+                each player, sorted by player indices.
+
+        Returns:
+            Iterator[Action]: Flattened iterator over the actions,
+                sorted so the order corresponds to the order
+                of environments.
+        """
+        offsets = [0] * len(player_actions)
+        for env in self.server.envs:
+            active_player_index = env.active_player_index
+            offset = offsets[active_player_index]
+            offsets[active_player_index] += 1
+            yield player_actions[active_player_index][offset]
+
+    @staticmethod
+    def is_done(num_games: int, max_num_games: Optional[int]) -> bool:
+        """Return whether the desired number of games have been played..
+
+        Returns:
+            bool: Whether the desired number of games have been played.
+        """
+        return max_num_games is not None and num_games >= max_num_games
+
+    def _is_done(self) -> bool:
+        """Return whether the server should disconnect its clients.
+
+        Returns:
+            bool: Whether the server should disconnect its clients.
+        """
+        return (
+            self.is_done(self.server.num_games, self.server.max_num_games)
+            # When we only have simulated agents left, we can just quit.
+            and not all(
+                isinstance(client.request, MockRequest)
+                for client in self.server.clients.values()
+            )
+        )
+
+    def handle(self) -> None:
+        self.server.num_games = 0
+        self.server.stats.clear()
+        num_players = len(self.server.clients)
+        for i in range(num_players):
+            self.server.num_illegals[i] = 0
+            self.server.total_scores[i] = 0
+            self.server.total_placements[i] = [0] * num_players
+
+        envs = self.server.envs
+        clients = self.server.clients
+
+        while not self._is_done():
+            if self.server.needs_reset:
+                init_return_data: List[MultiObservation] = envs.reset()
+                self.server.needs_reset = False
+
+                self._distribute_return_data(init_return_data)
+                del init_return_data
+
+            player_actions = self._parse_messages()
+            actions_iter = self._order_player_actions(player_actions)
+
+            return_data: List[Tuple[
+                MultiObservation,
+                MultiReward,
+                MultiIsDone,
+                MultiInfo,
+            ]] = envs.step(actions_iter)
+
+            for data in return_data:
+                obs, reward, is_done, info = data
+                # return_data = {
+                #     'obs': obs,
+                #     'reward': reward,
+                #     'is_done': is_done,
+                #     'info': info,
+                # }
+                first_key = next(iter(info.keys()))
+                single_info = info[first_key]
+                prev_active_player_index = \
+                    single_info['prev_active_player_index']
+                self.server.num_illegals[prev_active_player_index] += \
+                    single_info['was_illegal']
+
+            game_is_done = is_done['__all__']
+            if not game_is_done:
+                self._distribute_return_data(return_data)
+                continue
+
+            self.server.needs_reset = True
+            self.server.num_games += self.server.num_parallel_games
+
+            for data in return_data:
+                _, _, _, info = data
+                first_key = next(iter(info.keys()))
+                single_info = info[first_key]
+                final_scores = single_info['final_scores']
+                final_rankings = single_info['final_rankings']
+
+                self.server.stats.append((
+                    final_scores,
+                    final_rankings,
+                ))
+                for (i, score) in enumerate(final_scores):
+                    self.server.total_scores[i] += score
+                for (i, ranking) in enumerate(final_rankings):
+                    self.server.total_placements[i][ranking - 1] += 1
+
+            self.server.print_log(f'Num games: {self.server.num_games}')
+            if self.server.num_parallel_games == 1:
+                if 2 not in final_rankings:
+                    winner_indices = [
+                        i
+                        for (i, ranking) in enumerate(final_rankings)
+                        if ranking == 1
+                    ]
+                    self.server.print_log(f'Winners: {winner_indices}')
+                else:
+                    self.server.print_log(f'Winner: {final_rankings.index(1)}')
+
+            self.server.print_log(f'Total scores: {self.server.total_scores}')
+            self.server.print_log(
+                f'Total placements: {self.server.total_placements}')
+
+            return_data: bytes = (  # type: ignore[no-redef]
+                self._encode_data(return_data)
+            )
+            self.server.logger.debug('Return data:', return_data)
+
+            self._communicators.map(
+                lambda client: self.server.send_failable_replacing(
+                    client, return_data),
+                clients.values(),
+            )
+            self._communicators.map(
+                lambda client: self.server.receive_ok_replacing(
+                    client, self.OK_TIMEOUT_SEC),
+                clients.values(),
+            )
+
+    def finish(self) -> None:
+        clients = self.server.clients
+
+        # Clean up all requests.
+        for client in clients.values():
+            self.server.shutdown_request(  # type: ignore[attr-defined]
+                client.request)
+
+        clients.clear()
+
+        self._communicators.terminate()
+        self.server.envs.terminate_pool()
