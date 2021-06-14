@@ -19,8 +19,8 @@ is enabled are of the following form:
     HeartsEnv.OBS_KEY: {
         'cards': <vector of integer card states>,
         'leading_hearts_allowed': <boolean>,
-    }
-    HeartsEnv.ACTION_MASK_KEY: <vector of booleans>
+    },
+    HeartsEnv.ACTION_MASK_KEY: <vector of booleans>,
 }
 ```
 
