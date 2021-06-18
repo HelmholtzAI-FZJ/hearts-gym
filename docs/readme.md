@@ -43,7 +43,7 @@ adventurous).
 In the root directory of the repository clone, execute:
 
 ```shell
-python -m pip --upgrade pip
+python -m pip install --user --upgrade pip
 python -m pip install -e .
 ```
 
