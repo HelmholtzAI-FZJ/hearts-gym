@@ -189,9 +189,10 @@ def main() -> None:
         'timesteps_total': 2000000,
     }
 
-    scheduler = tune.schedulers.ASHAScheduler(
-        time_attr='timesteps_total',
-    )
+    scheduler = tune.schedulers.FIFOScheduler()
+    # scheduler = tune.schedulers.ASHAScheduler(
+    #     time_attr='timesteps_total',
+    # )
 
     model_config = {
         # 'fcnet_hiddens': tune.grid_search([
@@ -235,7 +236,8 @@ def main() -> None:
 
         # 'lr': tune.loguniform(1e-5, 1e-1),
         # 'gamma': tune.uniform(0.9, 1.0),
-        # 'sgd_minibatch_size': tune.grid_search([32, 64, 128, 256, 512, 1024]),
+        # 'sgd_minibatch_size': tune.grid_search(
+        #     [32, 64, 128, 256, 512, 1024]),
     }
     utils.maybe_set_up_masked_actions_model(algorithm, config)
 
