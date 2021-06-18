@@ -107,6 +107,17 @@ class HeartsGame:
         """The state for each card."""
         self.hands: List[List[Card]] = []
         self.table_cards: List[Card] = []
+        self.prev_played_cards: List[Optional[Card]] = \
+            [None] * self.num_players
+        """The last card actively played by each player.
+
+        Does not include the card that is force-played at the beginning
+        of the game.
+        """
+
+        self.prev_was_illegals: List[Optional[bool]] = \
+            [None] * self.num_players
+        """For each player, whether their previous action was illegal."""
 
         self._is_reset = False
         # self.reset()
@@ -535,6 +546,8 @@ class HeartsGame:
 
         card_to_play = self._play_card(adjusted_action)
         was_illegal = adjusted_action != action
+        self.prev_played_cards[self.active_player_index] = card_to_play
+        self.prev_was_illegals[self.active_player_index] = was_illegal
 
         trick_winner_index: Optional[int]
         trick_score: Optional[int]
@@ -788,6 +801,9 @@ class HeartsGame:
         self.active_player_index = self.leading_player_index
         assert card_index is not None
         self._play_card(card_index)
+        # We explicitly want the played card to still be set to `None`.
+        # Refers to `self.prev_played_cards`.
+        self.prev_was_illegals[self.leading_player_index] = False
 
         self._is_reset = True
 
