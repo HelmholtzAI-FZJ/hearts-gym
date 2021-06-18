@@ -5,6 +5,7 @@ TCP socket server to host Hearts games.
 import logging
 import math
 from multiprocessing.pool import ThreadPool
+import os
 from socketserver import BaseRequestHandler, BaseServer, TCPServer
 from threading import Lock, Thread
 import time
@@ -149,6 +150,7 @@ class HeartsServer(TCPServer):
         )
 
         self.logger = logging.getLogger(__name__)
+        self.loggel.setLevel(os.getenv('LOG_LEVEL', 'NOTSET').upper())
 
         if num_procs > num_parallel_games:
             num_procs = num_parallel_games
