@@ -56,7 +56,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         '--framework',
         type=str,
-        default='tf',
+        default=utils.DEFAULT_FRAMEWORK,
         help='Framework used for training.',
     )
 
