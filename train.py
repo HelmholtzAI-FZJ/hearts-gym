@@ -145,7 +145,8 @@ def main() -> None:
 
     ray.init()
 
-    framework = 'tf' if utils.tf is not None else 'torch'
+    # TensorFlow ("tf") if it's available, otherwise PyTorch ("torch").
+    framework = utils.DEFAULT_FRAMEWORK
 
     # Environment config
 

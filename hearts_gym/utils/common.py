@@ -28,6 +28,7 @@ from ray.tune.trainable import Trainable
 # FIXME take default config options from RLlib (e.g. COMMON_CONFIG, MODEL_DEFAULTS, ...)
 
 __all__ = [
+    'DEFAULT_FRAMEWORK',
     'parse_bool',
     'fix_ray_shutdown',
     'get_registered_env',
@@ -49,6 +50,8 @@ __all__ = [
 _, tf, _ = try_import_tf()
 th, _ = try_import_torch()
 
+DEFAULT_FRAMEWORK = 'tf' if tf is not None else 'torch'
+"""TensorFlow if it's available, otherwise PyTorch."""
 MASKED_ACTIONS_MODEL_KEY = 'masked_actions'
 
 
