@@ -67,7 +67,10 @@ def get_initial_state(
     if (
             state
             or not model_config.get('use_attention', False)
-            and not model_config.get('custom_model', '').endswith('_attn')
+            and (
+                model_config.get('custom_model', None) is None
+                or not model_config.get('custom_model', '').endswith('_attn')
+            )
     ):
         # No attention; use standard API.
         return state
@@ -351,8 +354,11 @@ def _eval_unstable(
 
             if (
                     model_config.get('use_attention', False)
-                    or model_config.get(
-                        'custom_model', '').endswith('_attn')
+                    or (
+                        model_config.get('custom_model', None) is not None
+                        and model_config.get(
+                            'custom_model', '').endswith('_attn')
+                    )
             ):
                 for (i, state) in enumerate(states[agent_id]):
                     states[agent_id][i] = np.vstack((state[1:], state[i]))
