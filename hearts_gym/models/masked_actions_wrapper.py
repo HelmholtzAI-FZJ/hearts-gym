@@ -284,7 +284,7 @@ class TorchMaskedActionsWrapper(
 
         # We don't use -infinity for numerical stability.
         inf_mask = th.maximum(th.log(action_mask),
-                              th.finfo(model_out.dtype).min)
+                              th.tensor(th.finfo(model_out.dtype).min))
         return model_out + inf_mask, state
 
     def value_function(self):
