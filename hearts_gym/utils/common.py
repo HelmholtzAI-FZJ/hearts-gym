@@ -240,6 +240,7 @@ def _adjust_other_config_for_action_masking(
 
     use_attention = model_config.get('use_attention', False)
     if use_attention:
+        # TensorFlow eager mode does not support attention yet.
         assert framework in ['tf', 'torch'], \
             f'attention not properly supported for framework {framework}'
         model_config['use_attention'] = False
