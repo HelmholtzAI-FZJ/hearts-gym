@@ -23,14 +23,20 @@ python -m pydoc hearts_gym.envs.hearts_game.HeartsGame
 
 ## Installing
 
-Clone this repository so you can easily modify it, replacing
-`<repo-uri>` with the URI of this repo.
+Supported Python versions are shown in `./setup.py` under the
+`python_requires` argument. Clone this repository so you can easily
+modify it, replacing `<repo-uri>` with the URI of this repo.
 
 ```shell
 git clone <repo-uri>
 cd hearts-gym
-python -m venv ./env
+# If `python3` is not found, try `python`.
+# If the `venv` module is not found, please install it.
+python3 -m venv --system-site-packages ./env
+# On Unix:
 source ./env/bin/activate
+# On Windows:
+.\env\Scripts\activate
 ```
 
 Install at least one of
@@ -40,7 +46,8 @@ framework (RLlib also has experimental
 [JAX](https://github.com/google/jax#installation) support if you feel
 adventurous).
 
-In the root directory of the repository clone, execute:
+After installing a deep learning framework, in the root directory of
+the repository clone, execute:
 
 ```shell
 python -m pip install --user --upgrade pip
@@ -53,7 +60,10 @@ You will need to execute the following line each time you start a new
 shell. This will activate the Python environment we are using:
 
 ```shell
+# On Unix:
 source ./env/bin/activate
+# On Windows:
+.\env\Scripts\activate
 ```
 
 ### Training
