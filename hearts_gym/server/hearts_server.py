@@ -150,7 +150,7 @@ class HeartsServer(TCPServer):
         )
 
         self.logger = logging.getLogger(__name__)
-        self.loggel.setLevel(os.getenv('LOG_LEVEL', 'NOTSET').upper())
+        self.logger.setLevel(os.getenv('LOG_LEVEL', 'NOTSET').upper())
 
         if num_procs > num_parallel_games:
             num_procs = num_parallel_games
