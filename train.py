@@ -145,7 +145,7 @@ def main() -> None:
 
     ray.init()
 
-    # TensorFlow ("tf") if it's available, otherwise PyTorch ("torch").
+    # "tf", "torch", or "jax", whichever is available (in that order).
     framework = utils.DEFAULT_FRAMEWORK
 
     # Environment config

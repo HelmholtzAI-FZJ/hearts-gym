@@ -10,7 +10,11 @@ from gym.spaces import Space
 import ray
 from ray.rllib.models import ModelCatalog
 from ray.rllib.models.preprocessors import get_preprocessor
-from ray.rllib.utils.framework import try_import_tf, try_import_torch
+from ray.rllib.utils.framework import (
+    try_import_jax,
+    try_import_tf,
+    try_import_torch,
+)
 from ray.rllib.utils.typing import (
     EnvConfigDict,
     EnvType,
@@ -49,9 +53,19 @@ __all__ = [
 
 _, tf, _ = try_import_tf()
 th, _ = try_import_torch()
+jax, _ = try_import_jax()
 
-DEFAULT_FRAMEWORK = 'tf' if tf is not None else 'torch'
-"""TensorFlow if it's available, otherwise PyTorch."""
+DEFAULT_FRAMEWORK = next(
+    config
+    for (fw, config) in [(tf, 'tf'), (th, 'th'), (jax, 'jax')]
+    if fw is not None
+)
+"""Configuration option for the first framework available in the
+following order:
+- TensorFlow
+- PyTorch
+- JAX
+"""
 MASKED_ACTIONS_MODEL_KEY = 'masked_actions'
 
 
@@ -330,6 +344,8 @@ def get_num_gpus(framework: str) -> int:
         return len(tf.config.list_physical_devices('GPU'))
     elif framework == 'torch':
         return th.cuda.device_count()
+    elif framework == 'jax':
+        return jax.device_count('gpu')
     print(
         f'Warning: automatically getting number of GPUs not '
         f'available for framework {framework}; returning 0'
