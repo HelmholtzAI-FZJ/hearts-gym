@@ -69,6 +69,10 @@ like this:
 python train.py
 ```
 
+If everything worked correctly, you should see a table summarizing
+test results of your learned agent against other agents. Please ignore
+any errors shown related to `SystemExit`.
+
 In there, you will find lots of [configuration options which are
 described here](#configuration). Results including configuration and
 checkpoints are saved in the `./results` directory by default. After
