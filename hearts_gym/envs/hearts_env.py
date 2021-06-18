@@ -362,25 +362,27 @@ class HeartsEnv(MultiAgentEnv):
             player_index: int,
             prev_active_player_index: int,
             prev_state: np.ndarray,
-            card: Card,
-            was_illegal: bool,
             trick_winner_index: Optional[int],
             trick_score: Optional[int],
     ) -> Reward:
         """Return the reward for the player with the given index.
 
         It is important to keep in mind that most of the time, the
-        arguments are unrelated to the player getting their reward.
+        arguments are unrelated to the player getting their reward. This
+        is because agents receive their reward only when it is their
+        next turn, not right after their turn. Due to this peculiarity,
+        it is encouraged to use `self.game.prev_played_cards`,
+        `self.game.prev_was_illegals`, and others.
 
         Args:
-            player_index (int): Index of the player to return the
-                reward for.
+            player_index (int): Index of the player to return the reward
+                for. This is most of the time _not_ the player that took
+                the action.
             prev_active_player_index (int): Index of the previously
-                active player.
-            prev_state (np.ndarray): Previous card state vector.
-            card (Card): Card that was played.
-            was_illegal (bool): Whether the original action was illegal
-                and another card has been played.
+                active player that took the action. In other words, the
+                active player index before the action was taken.
+            prev_state (np.ndarray): Previous card state vector. That
+                is, before the action was taken.
             trick_winner_index (Optional[int]): Index of the player that
                 won the trick or `None` if it is still ongoing.
             trick_score (Optional[int]): Score of the cards obtained by
@@ -390,8 +392,15 @@ class HeartsEnv(MultiAgentEnv):
         Returns:
             Reward: Reward for the player with the given index.
         """
-        if was_illegal and prev_active_player_index == player_index:
+        if self.game.prev_was_illegals[player_index]:
             return -self.game.max_score * self.game.max_num_cards_on_hand
+
+        card = self.game.prev_played_cards[player_index]
+
+        if card is None:
+            # The agent did not take a turn until now; no information
+            # to provide.
+            return 0
 
         if (
                 trick_winner_index is not None
@@ -474,8 +483,6 @@ class HeartsEnv(MultiAgentEnv):
                 ready_player_index,
                 active_player_index,
                 prev_state,
-                card,
-                was_illegal,
                 trick_winner_index,
                 trick_score,
             )
