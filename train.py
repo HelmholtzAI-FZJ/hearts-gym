@@ -144,7 +144,8 @@ def main() -> None:
         utils.fix_ray_shutdown()
 
     ray.init()
-    framework = 'tf'
+
+    framework = 'tf' if utils.tf is not None else 'torch'
 
     # Environment config
 
