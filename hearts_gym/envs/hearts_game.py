@@ -28,12 +28,13 @@ class HeartsGame:
     Morehead (2001).
 
     - The game starts with the player with the two of clubs playing it.
-    - In the first trick, players are not allowed to play scored cards
-      (any hearts or the queen of spades).
+    - In the first trick, players are not allowed to play penalty-scored
+      cards (any hearts or the queen of spades).
     - Players may only lead with a hearts card once a heart has been
       played due to not being able to follow suit or when they only have
       hearts on their hand.
-    - Two or more players with equal score obtain the higher ranking.
+    - Two or more players with equal penalty score obtain the
+      higher ranking.
 
     Each "hand" (terminology in the Wikipedia article for a single game
     from start to finish) is viewed independently; there is no state
@@ -58,8 +59,8 @@ class HeartsGame:
     STATE_UNKNOWN = 0
     """This card has not been seen."""
 
-    MAX_SCORE = 26
-    """Maximum score possibly reachable."""
+    MAX_PENALTY = 26
+    """Maximum penalty score possibly reachable."""
     RANK_QUEEN = Card.RANKS.index('Q')
 
     def __init__(
@@ -123,10 +124,10 @@ class HeartsGame:
         # self.reset()
 
         # Type hints
-        self.scores: List[int]
+        self.penalties: List[int]
         self.collected: List[List[Card]]
 
-        self.max_score: int
+        self.max_penalty: int
         self.is_first_trick: bool
         self.leading_hearts_allowed: bool
 
@@ -135,7 +136,7 @@ class HeartsGame:
         self.active_player_index: int
         """Index of the currently active player."""
         self.leading_suit: int
-        self.prev_trick_score: Optional[int]
+        self.prev_trick_penalty: Optional[int]
 
     def card_to_index(self, card: Card) -> int:
         """Return the index in the card state vector for the given card.
@@ -223,14 +224,14 @@ class HeartsGame:
         self.state[state_indices] = new_state
 
     @staticmethod
-    def _get_score(card: Card) -> int:
-        """Return the score of the given card.
+    def get_penalty(card: Card) -> int:
+        """Return the penalty score of the given card.
 
         Args:
-            card (Card): Card to return the score for.
+            card (Card): Card to return the penalty score for.
 
         Returns:
-            int: Score of the card.
+            int: Penalty score of the card.
         """
         is_heart = card.suit == Card.SUIT_HEART
         if is_heart:
@@ -244,52 +245,56 @@ class HeartsGame:
         return 0
 
     @staticmethod
-    def _has_score(card: Card) -> bool:
-        """Return whether the given card has a score greater than zero.
+    def has_penalty(card: Card) -> bool:
+        """Return whether the given card has a penalty score greater
+        than zero.
 
         Args:
-            card (Card): Card to return whether it has a score for.
+            card (Card): Card to return whether it has a penalty
+                score for.
 
         Returns:
-            bool: Whether the card has a score greater than zero.
+            bool: Whether the card has a penalty score greater
+                than zero.
         """
-        return HeartsGame._get_score(card) > 0
+        return HeartsGame.get_penalty(card) > 0
 
-    def _first_index_without_score(self, hand: List[Card]) -> Optional[int]:
-        """Return the index of the first card that has a score or `None`.
+    def _first_index_without_penalty(self, hand: List[Card]) -> Optional[int]:
+        """Return the index of the first card that has a penalty
+        or `None`.
 
         Args:
             hand (List[Card]): Cards to index into.
 
         Returns:
-            Optional[int]: Index of the first card with a score. `None`
-                if no card has a score.
+            Optional[int]: Index of the first card with a penalty score.
+                `None` if no card has a penalty.
         """
         for (i, card) in enumerate(hand):
-            if self._has_score(card):
+            if self.has_penalty(card):
                 continue
             return i
         return None
 
-    def _first_index_without_score_with_suit(
+    def _first_index_without_penalty_with_suit(
             self,
             hand: List[Card],
             suit: int,
     ) -> Optional[int]:
-        """Return the index of the first card without a score that has the
-        given suit or `None`.
+        """Return the index of the first card without a penalty that has
+        the given suit or `None`.
 
         Args:
             hand (List[Card]): Cards to index into.
             suit (int): Numerical value of a suit.
 
         Returns:
-            Optional[int]: Index of the first card without a score with
-                the given suit. `None` if all cards have a score or no
-                card has the given suit.
+            Optional[int]: Index of the first card without a penalty
+                score with the given suit. `None` if all cards have a
+                penalty or no card has the given suit.
         """
         for (i, card) in enumerate(hand):
-            if card.suit != suit or self._has_score(card):
+            if card.suit != suit or self.has_penalty(card):
                 continue
             return i
         return None
@@ -364,13 +369,13 @@ class HeartsGame:
         ):
             if player_index == self.leading_player_index:
                 actions = list(filter(
-                    lambda i_card: not self._has_score(i_card[1]),
+                    lambda i_card: not self.has_penalty(i_card[1]),
                     enumerate(hand),
                 ))
             else:
                 actions = list(filter(
                     lambda i_card: (i_card[1].suit == self.leading_suit
-                                    and not self._has_score(i_card[1])),
+                                    and not self.has_penalty(i_card[1])),
                     enumerate(hand),
                 ))
 
@@ -430,16 +435,17 @@ class HeartsGame:
         return card_to_play
 
     def _distribute_trick(self) -> Tuple[int, int]:
-        """Distribute the cards on the table according to who won the trick.
-        Return the index of the winner of the trick and the score
-        obtained by them.
+        """Distribute the cards on the table according to who won
+        the trick.
+        Return the index of the winner of the trick and the penalty
+        score obtained by them.
 
         Also update the game state accordingly.
 
         Returns:
             int: Index of the player that won the trick.
-            int: Score of the cards obtained by the player that won
-                the trick.
+            int: Penalty score of the cards obtained by the player that
+                won the trick.
         """
         assert all(map(
             lambda hand: len(hand) == len(self.hands[0]),
@@ -450,8 +456,8 @@ class HeartsGame:
             'trick must be full for distribution'
 
         trick_winner_index = self._get_trick_winner()
-        trick_score = self._score_cards(self.table_cards)
-        self.scores[trick_winner_index] += trick_score
+        trick_penalty = self.penalize_cards(self.table_cards)
+        self.penalties[trick_winner_index] += trick_penalty
 
         self.collected[trick_winner_index].extend(self.table_cards)
         self._update_state(self.table_cards,
@@ -461,8 +467,8 @@ class HeartsGame:
         self.leading_player_index = trick_winner_index
         self.active_player_index = self.leading_player_index
         self.is_first_trick = False
-        self.prev_trick_score = trick_score
-        return trick_winner_index, trick_score
+        self.prev_trick_penalty = trick_penalty
+        return trick_winner_index, trick_penalty
 
     def play_card(
             self,
@@ -485,8 +491,9 @@ class HeartsGame:
                 from the one specified by the action was played.
             Optional[int]: Index of the player that won the trick or
                 `None` if it is still ongoing.
-            Optional[int]: Score of the cards obtained by the player
-                that won the trick or `None` if it is still ongoing.
+            Optional[int]: Penalty score of the cards obtained by the
+                player that won the trick or `None` if it is
+                still ongoing.
         """
         assert self._is_reset, \
             'please call `reset` before interacting with the game.'
@@ -504,17 +511,17 @@ class HeartsGame:
         if (
                 # No hearts or queen of spades in first trick.
                 self.is_first_trick
-                and self._has_score(card_to_play)
+                and self.has_penalty(card_to_play)
         ):
             if self.active_player_index == self.leading_player_index:
-                index_without_score = self._first_index_without_score(hand)
+                index_without_penalty = self._first_index_without_penalty(hand)
             else:
-                index_without_score = \
-                    self._first_index_without_score_with_suit(
+                index_without_penalty = \
+                    self._first_index_without_penalty_with_suit(
                         hand, self.leading_suit)
 
-            if index_without_score is not None:
-                adjusted_action = index_without_score
+            if index_without_penalty is not None:
+                adjusted_action = index_without_penalty
             elif card_to_play.suit == Card.SUIT_HEART:
                 self.leading_hearts_allowed = True
 
@@ -550,12 +557,12 @@ class HeartsGame:
         self.prev_was_illegals[self.active_player_index] = was_illegal
 
         trick_winner_index: Optional[int]
-        trick_score: Optional[int]
+        trick_penalty: Optional[int]
         if len(self.table_cards) == self.num_players:
-            trick_winner_index, trick_score = self._distribute_trick()
+            trick_winner_index, trick_penalty = self._distribute_trick()
         else:
-            trick_winner_index, trick_score = (None, None)
-        return card_to_play, was_illegal, trick_winner_index, trick_score
+            trick_winner_index, trick_penalty = (None, None)
+        return card_to_play, was_illegal, trick_winner_index, trick_penalty
 
     def _get_trick_winner(self) -> int:
         """Return the index of the player that won the trick.
@@ -576,71 +583,74 @@ class HeartsGame:
         return (max_rank_index + self.leading_player_index) % self.num_players
 
     @staticmethod
-    def _score_cards(cards: List[Card]) -> int:
-        """Return the accumulated score of the given cards.
+    def penalize_cards(cards: List[Card]) -> int:
+        """Return the accumulated penalty score of the given cards.
 
         Args:
-            cards (List[Card]): Cards to score.
+            cards (List[Card]): Cards to penalize.
 
         Returns:
-            int: Accumulated score of the cards.
+            int: Accumulated penalty score of the cards.
         """
-        total_score = 0
+        total_penalty = 0
         for card in cards:
-            total_score += HeartsGame._get_score(card)
-        return total_score
+            total_penalty += HeartsGame.get_penalty(card)
+        return total_penalty
 
-    def compute_final_scores(self) -> List[int]:
-        """Compute and return the final scores of the game, taking into account
-        shooting the moon.
+    def compute_final_penalties(self) -> List[int]:
+        """Compute and return the final penalty scores of the game,
+        taking into account shooting the moon.
 
         Returns:
-            List[int]: The final scores of the game for each player,
-                sorted by player indices.
+            List[int]: The final penalty scores of the game for each
+                player, sorted by player indices.
         """
-        # print('scores:', self.scores)
-        for (player_index, score) in enumerate(self.scores):
-            if score != self.max_score:
+        # print('penalties:', self.penalties)
+        for (player_index, penalty) in enumerate(self.penalties):
+            if penalty != self.max_penalty:
                 continue
 
             # Someone has shot the moon.
-            self.scores = [self.max_score] * self.num_players
-            self.scores[player_index] = 0
+            self.penalties = [self.max_penalty] * self.num_players
+            self.penalties[player_index] = 0
             break
 
-        # Return a copy to avoid surprises when stored scores change.
-        return self.scores.copy()
+        # Return a copy to avoid surprises when stored penalties change.
+        return self.penalties.copy()
 
     def compute_rankings(self) -> List[int]:
         """Compute and return the final rankings of the game.
 
-        Players with the same score obtain the higher ranking.
+        Players with the same penalty score obtain the higher ranking.
 
-        Requires the final scores to be computed (see
-        `compute_final_scores`).
+        Requires the final penalties to be computed (see
+        `compute_final_penalties`).
 
         Returns:
             List[int]: The final rankings of the game for each player,
                 sorted by player indices.
         """
         rankings: List[Optional[int]] = [None] * self.num_players
-        sorted_scores = sorted(
-            zip(self.scores, range(self.num_players)),
+        sorted_penalties = sorted(
+            zip(self.penalties, range(self.num_players)),
             reverse=True,
         )
 
-        same_score = []
+        same_penalty = []
         curr_ranking = self.num_players
 
-        for (i, (score, player_index)) in enumerate(sorted_scores):
-            if i + 1 < len(sorted_scores) and sorted_scores[i + 1][0] == score:
-                same_score.append(player_index)
+        for (i, (penalty, player_index)) in enumerate(sorted_penalties):
+            if (
+                    i + 1 < len(sorted_penalties)
+                    and sorted_penalties[i + 1][0] == penalty
+            ):
+                same_penalty.append(player_index)
                 curr_ranking -= 1
                 continue
-            elif len(same_score) > 0:
-                for same_score_player_index in same_score:
-                    rankings[same_score_player_index] = curr_ranking
-                same_score.clear()
+            elif len(same_penalty) > 0:
+                for same_penalty_player_index in same_penalty:
+                    rankings[same_penalty_player_index] = curr_ranking
+                same_penalty.clear()
 
             rankings[player_index] = curr_ranking
             curr_ranking -= 1
@@ -709,12 +719,12 @@ class HeartsGame:
                 continue
             player_index = player_index % self.num_players
             action = actions[player_index]
-            card, was_illegal, trick_winner_index, trick_score = \
+            card, was_illegal, trick_winner_index, trick_penalty = \
                 self.play_card(action)
             cards[player_index] = card
             was_illegals[player_index] = was_illegal
 
-        assert trick_winner_index is not None and trick_score is not None, \
+        assert trick_winner_index is not None and trick_penalty is not None, \
             'did not properly finish full trick'
 
         is_done = self.is_done()
@@ -723,11 +733,11 @@ class HeartsGame:
             'cards': cards,
             'was_illegals': was_illegals,
             'trick_winner_index': trick_winner_index,
-            'trick_score': trick_score,
+            'trick_penalty': trick_penalty,
         }
 
         if is_done:
-            info['final_scores'] = self.compute_final_scores()
+            info['final_penalties'] = self.compute_final_penalties()
             info['final_rankings'] = self.compute_rankings()
 
         return self.state.copy(), trick_winner_index, is_done, info
@@ -743,10 +753,10 @@ class HeartsGame:
         """
         self.deck.reset()
         self.state[:] = self.STATE_UNKNOWN
-        self.scores = [0] * self.num_players
+        self.penalties = [0] * self.num_players
         self.is_first_trick = True
         self.leading_hearts_allowed = False
-        self.prev_trick_score = None
+        self.prev_trick_penalty = None
         # FIXME implement proper discarding (remove as many as needed from 2C, 2D, 3C, 2S)
 
         self.collected = [[] for _ in range(self.num_players)]
@@ -795,8 +805,8 @@ class HeartsGame:
         assert len(self.deck) == 0, \
             'deck must be empty at start of game'
 
-        self.max_score = \
-            self.MAX_SCORE - sum(map(self._get_score, self.remaining_cards))
+        self.max_penalty = \
+            self.MAX_PENALTY - sum(map(self.get_penalty, self.remaining_cards))
 
         self.active_player_index = self.leading_player_index
         assert card_index is not None
@@ -809,9 +819,9 @@ class HeartsGame:
 
     def __str__(self) -> str:
         output = []
-        for (player_index, (hand, score, collected)) in enumerate(zip(
+        for (player_index, (hand, penalty, collected)) in enumerate(zip(
                 self.hands,
-                self.scores,
+                self.penalties,
                 self.collected,
         )):
             output.append('Player ')
@@ -820,9 +830,9 @@ class HeartsGame:
                 output.append(' (active)')
             output.append(': ')
             output.append(', '.join(str(card) for card in hand))
-            output.append('\n   Collected (score ')
+            output.append('\n   Collected (penalty ')
 
-            output.append(str(score))
+            output.append(str(penalty))
             output.append('): ')
             output.append(', '.join(str(card) for card in collected))
             output.append('\n')

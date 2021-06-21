@@ -220,7 +220,7 @@ def _get_num_players(config: TrainerConfigDict) -> int:
 
 
 def _setup_eval_vars(num_players: int) -> EvalResults:
-    total_scores = [0] * num_players
+    total_penalties = [0] * num_players
     total_placements = [[0] * num_players for _ in range(num_players)]
 
     num_actions = 0
@@ -229,7 +229,7 @@ def _setup_eval_vars(num_players: int) -> EvalResults:
     test_start_time = time.perf_counter()
 
     return (
-        total_scores,
+        total_penalties,
         total_placements,
         num_actions,
         num_illegal,
@@ -246,7 +246,7 @@ def _eval_stable(
 ) -> EvalResults:
     num_players = _get_num_players(eval_config)
     (
-        total_scores,
+        total_penalties,
         total_placements,
         num_actions,
         num_illegal,
@@ -289,14 +289,14 @@ def _eval_stable(
         # final observation.
         info = final_rollout[-1][learned_agent_id]
 
-        for (i, score) in enumerate(info['final_scores']):
-            total_scores[i] += score
+        for (i, penalty) in enumerate(info['final_penalties']):
+            total_penalties[i] += penalty
         for (i, ranking) in enumerate(info['final_rankings']):
             total_placements[i][ranking - 1] += 1
 
     test_duration = time.perf_counter() - test_start_time
     return (
-        total_scores,
+        total_penalties,
         total_placements,
         num_actions,
         num_illegal,
@@ -316,7 +316,7 @@ def _eval_unstable(
         eval_config['multiagent']['policy_mapping_fn']
 
     (
-        total_scores,
+        total_penalties,
         total_placements,
         num_actions,
         num_illegal,
@@ -374,14 +374,14 @@ def _eval_unstable(
             num_actions += 1
             num_illegal += info['was_illegal']
 
-        for (i, score) in enumerate(info['final_scores']):
-            total_scores[i] += score
+        for (i, penalty) in enumerate(info['final_penalties']):
+            total_penalties[i] += penalty
         for (i, ranking) in enumerate(info['final_rankings']):
             total_placements[i][ranking - 1] += 1
 
     test_duration = time.perf_counter() - test_start_time
     return (
-        total_scores,
+        total_penalties,
         total_placements,
         num_actions,
         num_illegal,

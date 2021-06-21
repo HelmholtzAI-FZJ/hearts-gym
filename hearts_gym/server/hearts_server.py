@@ -179,7 +179,7 @@ class HeartsServer(TCPServer):
         self.num_games = 0
         self.stats: List[Tuple[List[int], List[int]]] = []
         self.num_illegals: List[int] = [0] * num_players
-        self.total_scores = [0] * num_players
+        self.total_penalties = [0] * num_players
         self.total_placements = [[0] * num_players for _ in range(num_players)]
 
         self.envs = VecHeartsEnv(
@@ -1093,7 +1093,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         num_players = len(self.server.clients)
         for i in range(num_players):
             self.server.num_illegals[i] = 0
-            self.server.total_scores[i] = 0
+            self.server.total_penalties[i] = 0
             self.server.total_placements[i] = [0] * num_players
 
         envs = self.server.envs
@@ -1144,15 +1144,15 @@ class HeartsRequestHandler(BaseRequestHandler):
                 _, _, _, info = data
                 first_key = next(iter(info.keys()))
                 single_info = info[first_key]
-                final_scores = single_info['final_scores']
+                final_penalties = single_info['final_penalties']
                 final_rankings = single_info['final_rankings']
 
                 self.server.stats.append((
-                    final_scores,
+                    final_penalties,
                     final_rankings,
                 ))
-                for (i, score) in enumerate(final_scores):
-                    self.server.total_scores[i] += score
+                for (i, penalty) in enumerate(final_penalties):
+                    self.server.total_penalties[i] += penalty
                 for (i, ranking) in enumerate(final_rankings):
                     self.server.total_placements[i][ranking - 1] += 1
 
@@ -1168,7 +1168,8 @@ class HeartsRequestHandler(BaseRequestHandler):
                 else:
                     self.server.print_log(f'Winner: {final_rankings.index(1)}')
 
-            self.server.print_log(f'Total scores: {self.server.total_scores}')
+            self.server.print_log(
+                f'Total penalties: {self.server.total_penalties}')
             self.server.print_log(
                 f'Total placements: {self.server.total_placements}')
 

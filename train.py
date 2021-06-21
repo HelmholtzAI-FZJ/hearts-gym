@@ -75,37 +75,37 @@ def _strlen(x: Any) -> int:
 
 
 def print_results_table(
-        total_scores: List[int],
+        total_penalties: List[int],
         total_placements: List[List[int]],
         policy_mapping_fn: Callable[[AgentId], PolicyID],
 ) -> None:
     """Print a table summarizing the given results.
 
     Args:
-        total_scores (List[int]): Total scores for each player, sorted
-            by player index.
+        total_penalties (List[int]): Total penalties for each player,
+            sorted by player index.
         total_placements (List[List[int]]): Total amount of each ranking
             sorted by ranking for each player, sorted by player index.
         policy_mapping_fn (Callable[[AgentId], PolicyID]): Function
             mapping agent IDs to policy IDs.
     """
-    num_players = len(total_scores)
+    num_players = len(total_penalties)
     agent_names = [policy_mapping_fn(i) for i in range(num_players)]
 
     header = ['policy']
     header.extend(f'# rank {i}' for i in range(1, num_players + 1))
-    header.append('total score')
+    header.append('total penalty')
 
     longest_agent_name = max(map(_strlen, agent_names))
     longest_placements = [
         max(map(_strlen, map(lambda x: x[i], total_placements)))
         for i in range(num_players)
     ]
-    longest_score = max(map(_strlen, total_scores))
+    longest_penalty = max(map(_strlen, total_penalties))
 
     longest_in_cols = [longest_agent_name]
     longest_in_cols.extend(longest_placements)
-    longest_in_cols.append(longest_score)
+    longest_in_cols.append(longest_penalty)
     longest_in_cols = list(map(max, zip(  # type: ignore[arg-type]
         longest_in_cols,
         map(_strlen, header),
@@ -126,12 +126,12 @@ def print_results_table(
 
     print(row_formatter.format(*header))
     print(header_separator)
-    for (name, placements, score) in zip(
+    for (name, placements, penalty) in zip(
             agent_names,
             total_placements,
-            total_scores,
+            total_penalties,
     ):
-        print(row_formatter.format(name, *placements, score))
+        print(row_formatter.format(name, *placements, penalty))
 
 
 def main() -> None:
@@ -306,7 +306,7 @@ def main() -> None:
     agent = utils.load_agent(algorithm, best_cp, eval_config)
 
     (
-        total_scores,
+        total_penalties,
         total_placements,
         num_actions,
         num_illegal,
@@ -325,7 +325,8 @@ def main() -> None:
           num_illegal, '/', num_actions)
     print(f'# illegal action ratio (player {LEARNED_AGENT_ID}):',
           'NaN' if num_actions == 0 else num_illegal / num_actions)
-    print_results_table(total_scores, total_placements, eval_policy_mapping_fn)
+    print_results_table(
+        total_penalties, total_placements, eval_policy_mapping_fn)
 
     ray.shutdown()
 

@@ -455,7 +455,7 @@ class HeartsEnv(MultiAgentEnv):
         assert active_player_index == next(iter(action_dict.keys()))
         prev_state = self.game.state.copy()
 
-        card, was_illegal, trick_winner_index, trick_score = \
+        card, was_illegal, trick_winner_index, trick_penalty = \
             self.game.play_card(action_dict[active_player_index])
         if self.mask_actions and was_illegal:
             print('actions should not be illegal when masking is on')
@@ -464,7 +464,7 @@ class HeartsEnv(MultiAgentEnv):
         game_is_done = trick_is_done and self.game.is_done()
         if game_is_done:
             ready_player_indices = list(range(self.game.num_players))
-            final_scores = self.game.compute_final_scores()
+            final_penalties = self.game.compute_final_penalties()
             final_rankings = self.game.compute_rankings()
         else:
             next_active_player_index = self.game.active_player_index
@@ -484,7 +484,7 @@ class HeartsEnv(MultiAgentEnv):
                 active_player_index,
                 prev_state,
                 trick_winner_index,
-                trick_score,
+                trick_penalty,
             )
             reward[ready_player_index] = player_reward
 
@@ -498,10 +498,10 @@ class HeartsEnv(MultiAgentEnv):
                 'was_illegal': was_illegal,
                 'leading_player_index': leading_player_index,
                 'trick_winner_index': trick_winner_index,
-                'trick_score': trick_score,
+                'trick_penalty': trick_penalty,
             }
             if game_is_done:
-                player_info['final_scores'] = final_scores
+                player_info['final_penalties'] = final_penalties
                 player_info['final_rankings'] = final_rankings
 
             info[ready_player_index] = player_info

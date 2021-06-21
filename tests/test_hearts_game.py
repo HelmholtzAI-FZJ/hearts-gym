@@ -167,7 +167,7 @@ class TestCommon(unittest.TestCase):
         game = HeartsGame(seed=seed)
         rng = random.Random(seed + 1)
 
-        total_scores = [0] * 4
+        total_penalties = [0] * 4
         total_placements = [[0] * 4 for _ in range(4)]
 
         for _ in range(10000):
@@ -184,14 +184,14 @@ class TestCommon(unittest.TestCase):
 
             self.assertTrue(game.is_done())
 
-            final_scores = game.compute_final_scores()
+            final_penalties = game.compute_final_penalties()
             final_rankings = game.compute_rankings()
-            for (i, score) in enumerate(final_scores):
-                total_scores[i] += score
+            for (i, penalty) in enumerate(final_penalties):
+                total_penalties[i] += penalty
             for (i, ranking) in enumerate(final_rankings):
                 total_placements[i][ranking - 1] += 1
 
-        print(total_scores)
+        print(total_penalties)
         print(total_placements)
 
     # def test_hand_sorted(self):
