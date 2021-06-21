@@ -13,7 +13,6 @@ from gym.utils import seeding
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
-from .card_deck import Card
 from .hearts_game import HeartsGame
 
 GymSeed = Union[int, str, None]
