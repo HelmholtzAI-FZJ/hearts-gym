@@ -164,6 +164,12 @@ class HeartsEnv(MultiAgentEnv):
 
         self.action_space = spaces.Discrete(self.game.max_num_cards_on_hand)
 
+        self.prev_states: List[np.ndarray] = [None] * self.game.num_players
+        """State before the last action for each player.
+
+        `None` if no action has been taken yet.
+        """
+
     def seed(self, seed: GymSeed = None) -> List[int]:
         """Return a strong seed for this environment's random
         number generator(s).
@@ -361,7 +367,6 @@ class HeartsEnv(MultiAgentEnv):
             self,
             player_index: int,
             prev_active_player_index: int,
-            prev_state: np.ndarray,
             trick_winner_index: Optional[int],
             trick_score: Optional[int],
     ) -> Reward:
@@ -381,8 +386,6 @@ class HeartsEnv(MultiAgentEnv):
             prev_active_player_index (int): Index of the previously
                 active player that took the action. In other words, the
                 active player index before the action was taken.
-            prev_state (np.ndarray): Previous card state vector. That
-                is, before the action was taken.
             trick_winner_index (Optional[int]): Index of the player that
                 won the trick or `None` if it is still ongoing.
             trick_score (Optional[int]): Score of the cards obtained by
@@ -453,7 +456,7 @@ class HeartsEnv(MultiAgentEnv):
         leading_player_index = self.game.leading_player_index
         active_player_index = self.game.active_player_index
         assert active_player_index == next(iter(action_dict.keys()))
-        prev_state = self.game.state.copy()
+        self.prev_states[active_player_index] = self.game.state.copy()
 
         card, was_illegal, trick_winner_index, trick_penalty = \
             self.game.play_card(action_dict[active_player_index])
@@ -482,7 +485,6 @@ class HeartsEnv(MultiAgentEnv):
             player_reward = self.compute_reward(
                 ready_player_index,
                 active_player_index,
-                prev_state,
                 trick_winner_index,
                 trick_penalty,
             )

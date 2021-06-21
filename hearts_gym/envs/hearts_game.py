@@ -114,11 +114,17 @@ class HeartsGame:
 
         Does not include the card that is force-played at the beginning
         of the game.
+
+        `None` if no action has been taken yet, so also `None` after the
+        initial card was force-played.
         """
 
         self.prev_was_illegals: List[Optional[bool]] = \
             [None] * self.num_players
-        """For each player, whether their previous action was illegal."""
+        """For each player, whether their previous action was illegal.
+
+        `None` if no action has been taken yet.
+        """
 
         self._is_reset = False
         # self.reset()
