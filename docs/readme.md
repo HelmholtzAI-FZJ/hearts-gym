@@ -153,6 +153,7 @@ default values can be found at the following locations:
 | `model_config`              | [RLlib Models](https://docs.ray.io/en/master/rllib-models.html#default-model-config-settings)                | `ray/rllib/models/catalog.py`                                                    |
 | `config`                    | [RLlib Training](https://docs.ray.io/en/master/rllib-training.html#common-parameters)                        | `ray/rllib/agents/trainer.py`                                                    |
 | Algorithm-specific `config` | [RLlib Algorithms](https://docs.ray.io/en/master/rllib-algorithms.html) (bottom of each algorithm's section) | `ray/rllib/agents/<algo>/<algo>.py` (replace `<algo>` with the algorithm's name) |
+| `stop_config`               | [Tune Guide](https://docs.ray.io/en/latest/tune/user-guide.html#stopping-trials)                             | `ray/python/ray/tune/tune.py`                                                    |
 
 ### Development
 
