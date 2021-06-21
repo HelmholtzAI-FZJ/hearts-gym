@@ -507,7 +507,7 @@ class HeartsGame:
             'cannot play a card when trick is already full'
         hand = self.hands[self.active_player_index]
 
-        if action >= len(hand):
+        if action < 0 or action >= len(hand):
             # Just play the last card.
             adjusted_action = -1
         else:
