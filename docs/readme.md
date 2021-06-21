@@ -89,9 +89,9 @@ checkpoints are saved in the `./results` directory by default. After
 training, your agent is automatically evaluated as well.
 
 To optimize your agent, the main thing you want to modify is the
-`hearts_gym.HeartsEnv.compute_reward` method in
-`./hearts_gym/envs/hearts_env.py` with which you can shape the reward
-function for your agent, adjusting its behaviour.
+`hearts_gym.RewardFunction.compute_reward` method in
+`./hearts_gym/envs/reward_function.py` with which you can shape the
+reward function for your agent, adjusting its behaviour.
 
 You should not modify the observations of the environment because we
 rely on their structure for remote interaction. If you do decide to

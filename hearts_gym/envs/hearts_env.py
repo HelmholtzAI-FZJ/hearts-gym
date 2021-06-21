@@ -54,7 +54,7 @@ class HeartsEnv(MultiAgentEnv):
     not supported by all reinforcement learning algorithms.
 
     The main function of interest for optimizing an agent is the
-    `compute_reward` function.
+    `RewardFunction` in `./hearts_gym/envs/reward_function.py`.
 
     See also `MultiAgentEnv` for a description of
     multi-agent environments.
@@ -162,6 +162,9 @@ class HeartsEnv(MultiAgentEnv):
         self.observation_space = spaces.Dict(obs_space)
 
         self.action_space = spaces.Discrete(self.game.max_num_cards_on_hand)
+
+        from .reward_function import RewardFunction
+        self.reward_function = RewardFunction(self)
 
         self.prev_states: List[np.ndarray] = [None] * self.game.num_players
         """State before the last action for each player.
@@ -481,7 +484,7 @@ class HeartsEnv(MultiAgentEnv):
             obs[ready_player_index] = \
                 self._game_state_to_obs(ready_player_index)
 
-            player_reward = self.compute_reward(
+            player_reward = self.reward_function(
                 ready_player_index,
                 active_player_index,
                 trick_winner_index,
