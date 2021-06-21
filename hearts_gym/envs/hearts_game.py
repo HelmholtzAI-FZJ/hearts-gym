@@ -588,6 +588,37 @@ class HeartsGame:
         assert self.leading_player_index is not None
         return (max_rank_index + self.leading_player_index) % self.num_players
 
+    def has_shot_the_moon(
+            self,
+            player_index: int,
+    ) -> bool:
+        """Return whether the given player has shot the moon.
+
+        Requires the final penalty scores to be computed (see
+        `self.compute_final_penalties`).
+
+        Args:
+            player_index (int): Index of the player to query whether
+                they shot the moon for.
+
+        Returns:
+            bool: Whether the given player has shot the moon.
+        """
+        return (
+            self.penalties[player_index] == 0
+            and self.is_done()
+            and (
+                self.penalties[(player_index + 1)
+                               % self.num_players]
+                == self.max_penalty
+            )
+            and (
+                self.penalties[(player_index - 1)
+                               % self.num_players]
+                == self.max_penalty
+            )
+        )
+
     @staticmethod
     def penalize_cards(cards: List[Card]) -> int:
         """Return the accumulated penalty score of the given cards.

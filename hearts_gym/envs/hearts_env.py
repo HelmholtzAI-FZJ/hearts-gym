@@ -334,37 +334,6 @@ class HeartsEnv(MultiAgentEnv):
         """Index of the currently active player."""
         return self.game.active_player_index
 
-    def has_shot_the_moon(
-            self,
-            player_index: int,
-    ) -> bool:
-        """Return whether the given player has shot the moon.
-
-        Requires the final scores to be computed (see
-        `self.game.compute_final_scores`).
-
-        Args:
-            player_index (int): Index of the player to query whether
-                they shot the moon for.
-
-        Returns:
-            bool: Whether the given player has shot the moon.
-        """
-        return (
-                self.game.scores[player_index] == 0
-                and self.game.is_done()
-                and (
-                    self.game.scores[(player_index + 1)
-                                     % self.game.num_players]
-                    == self.game.max_score
-                )
-                and (
-                    self.game.scores[(player_index - 1)
-                                     % self.game.num_players]
-                    == self.game.max_score
-                )
-        )
-
     def compute_reward(
             self,
             player_index: int,

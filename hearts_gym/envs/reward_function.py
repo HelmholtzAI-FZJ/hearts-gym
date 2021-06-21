@@ -68,7 +68,7 @@ class RewardFunction:
 
         if (
                 trick_winner_index is not None
-                and self.env.has_shot_the_moon(player_index)
+                and self.game.has_shot_the_moon(player_index)
         ):
             return self.game.max_penalty * self.game.max_num_cards_on_hand
 
