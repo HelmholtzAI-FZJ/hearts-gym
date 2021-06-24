@@ -57,7 +57,7 @@ python -m pip install -e .
 ## Usage
 
 You will need to execute the following line each time you start a new
-shell. This will activate the Python environment we are using:
+shell. This will activate the Python virtual environment we are using:
 
 ```shell
 # On Unix:
