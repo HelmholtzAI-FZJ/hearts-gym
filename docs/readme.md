@@ -92,16 +92,21 @@ displayed by Ray. The table looks something like this:
 [...]
 (pid=10101) SystemExit: 1  # Can be ignored.
 [...]
-testing took 98.7654321 seconds
-# illegal action (player 0): 0 / 63754
+testing took 1.23456789 seconds
+# illegal action (player 0): 0 / 52
 # illegal action ratio (player 0): 0.0
 | policy  | # rank 1 | # rank 2 | # rank 3 | # rank 4 | total penalty |
 |---------+----------+----------+----------+----------+---------------|
-| learned |    [...] |    [...] |    [...] |    [...] |         [...] |
-| random  |    [...] |    [...] |    [...] |    [...] |         [...] |
-| random  |    [...] |    [...] |    [...] |    [...] |         [...] |
-| random  |    [...] |    [...] |    [...] |    [...] |         [...] |
+| learned |        1 |        0 |        0 |        0 |             0 |
+| random  |        0 |        1 |        0 |        0 |             5 |
+| random  |        0 |        1 |        0 |        0 |             5 |
+| random  |        0 |        0 |        0 |        1 |            16 |
 ```
+
+The table lists the policy, the number of placements in each rank, and
+the accumulated penalty over all test games for each player. As you
+can see from this example with a single test game, players with the
+same penalty score get the highest of their rankings.
 
 In `train.py`, you will find lots of [configuration options which are
 described here](#configuration). Results including configuration and
