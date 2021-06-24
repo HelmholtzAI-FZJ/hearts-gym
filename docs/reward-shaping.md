@@ -43,7 +43,7 @@ python -m pydoc hearts_gym.envs.hearts_game.HeartsGame.<attr>
 | `self.game.collected`                   | All cards collected after the action; use player index for retrieval.  |
 | `self.game.penalties`                   | Penalty scores; use player index for retrieval.                        |
 | `self.game.prev_was_illegals`           | Wether actions were illegal; use player index for retrieval.           |
-| `self.game.prev_states`                 | Wether actions were illegal; use player index for retrieval.           |
+| `self.game.prev_states`                 | Card state vector; use player index for retrieval.                     |
 | `self.game.prev_was_first_trick`        | Wether it is the first trick of the game.                              |
 | `self.game.prev_leading_hearts_allowed` | Wether leading with hearts is allowed; use player index for retrieval. |
 | `self.game.prev_leading_suit`           | Leading suit.                                                          |
