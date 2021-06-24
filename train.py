@@ -266,7 +266,7 @@ def main() -> None:
         local_dir='./results',
         checkpoint_at_end=True,
         scheduler=scheduler,
-        # resume=True,
+        # resume=True,  # Resume the most recent run.
         restore=checkpoint_path,
     )
 
