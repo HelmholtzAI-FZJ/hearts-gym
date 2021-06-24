@@ -79,6 +79,10 @@ like this:
 python train.py
 ```
 
+If you encounter memory errors, the simplest solution is to set a
+lower number of worker processes (`'num_workers'` in the `config`
+dictionary). By default, all CPUs and all GPUs are used.
+
 If everything worked correctly, you should see a table summarizing
 test results of your learned agent against other agents printed on
 your terminal. If you see the table, you can ignore any other errors
