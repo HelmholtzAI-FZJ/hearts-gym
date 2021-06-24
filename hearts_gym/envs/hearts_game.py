@@ -108,24 +108,6 @@ class HeartsGame:
         """The state for each card."""
         self.hands: List[List[Card]] = []
         self.table_cards: List[Card] = []
-        self.prev_played_cards: List[Optional[Card]] = \
-            [None] * self.num_players
-        """The last card actively played by each player.
-
-        Does not include the card that is force-played at the beginning
-        of the game.
-
-        `None` if no action has been taken yet, so also `None` after the
-        initial card was force-played.
-        """
-
-        self.prev_was_illegals: List[Optional[bool]] = \
-            [None] * self.num_players
-        """For each player, whether their previous action was illegal.
-
-        `None` if no action has been taken yet.
-        """
-
         self._is_reset = False
         # self.reset()
 
@@ -138,10 +120,63 @@ class HeartsGame:
         self.leading_hearts_allowed: bool
 
         self.leading_player_index: Optional[int]
-        """Index of the player that lead the current trick."""
+        """Index of the player that lead, i.e. started, the current trick."""
         self.active_player_index: int
         """Index of the currently active player."""
         self.leading_suit: int
+
+        self.prev_hands: List[List[Card]]
+        """The cards in hand in the previous trick for each player.
+
+        Entries are empty lists if no trick has been played yet.
+        """
+        self.prev_played_cards: List[Optional[Card]]
+        """The last card actively played by each player.
+
+        Does not include the card that is force-played at the beginning
+        of the game.
+
+        Entries are `None` if no action has been taken yet, so also
+        `None` after the initial card was force-played.
+        """
+        self.prev_table_cards: List[Card]
+        """The last cards on the table.
+
+        Empty if no trick has been distributed yet.
+        """
+
+        self.prev_collected: List[List[Card]]
+        """All cards collected before the previous trick."""
+
+        self.prev_was_illegals: List[Optional[bool]] = \
+            [None] * self.num_players
+        """For each player, whether their previous action was illegal.
+
+        Entries are `None` if no action has been taken yet.
+        """
+        self.prev_states: List[Optional[np.ndarray]] = \
+            [None] * self.num_players
+        """State before the last action for each player.
+
+        Entries are `None` if no action has been taken yet.
+        """
+
+        self.prev_was_first_trick: Optional[bool] = None
+        """Whether the previous trick was the first one.
+
+        `None` if no trick has been distributed yet.
+        """
+        self.prev_leading_hearts_allowed: List[Optional[bool]] = \
+            [None] * self.num_players
+        """For each player, whether leading hearts were allowed for the
+        previous action.
+
+        Entries are `None` if no action has been taken yet.
+        """
+
+        self.prev_leading_suit: Optional[int]
+        self.prev_leading_player_index: Optional[int]
+        self.prev_trick_winner_index: Optional[int]
         self.prev_trick_penalty: Optional[int]
 
     def card_to_index(self, card: Card) -> int:
@@ -428,6 +463,7 @@ class HeartsGame:
             Card: The card that was played.
         """
         hand = self.hands[self.active_player_index]
+        self.prev_hands[self.active_player_index] = hand.copy()
         card_to_play = hand.pop(card_index)
         self.table_cards.append(card_to_play)
         self._update_state(card_to_play,
@@ -465,14 +501,21 @@ class HeartsGame:
         trick_penalty = self.penalize_cards(self.table_cards)
         self.penalties[trick_winner_index] += trick_penalty
 
+        self.prev_collected[trick_winner_index] = \
+            self.collected[trick_winner_index].copy()
         self.collected[trick_winner_index].extend(self.table_cards)
         self._update_state(self.table_cards,
                            self.collected_state(trick_winner_index))
+        self.prev_table_cards = self.table_cards.copy()
         self.table_cards.clear()
 
+        self.prev_leading_suit = self.leading_suit
+        self.prev_leading_player_index = self.leading_player_index
         self.leading_player_index = trick_winner_index
         self.active_player_index = self.leading_player_index
+        self.prev_was_first_trick = self.is_first_trick
         self.is_first_trick = False
+        self.prev_trick_winner_index = trick_winner_index
         self.prev_trick_penalty = trick_penalty
         return trick_winner_index, trick_penalty
 
@@ -505,6 +548,9 @@ class HeartsGame:
             'please call `reset` before interacting with the game.'
         assert len(self.table_cards) < self.num_players, \
             'cannot play a card when trick is already full'
+        self.prev_states[self.active_player_index] = self.state.copy()
+        self.prev_leading_hearts_allowed[self.active_player_index] = \
+            self.leading_hearts_allowed
         hand = self.hands[self.active_player_index]
 
         if action < 0 or action >= len(hand):
@@ -793,7 +839,21 @@ class HeartsGame:
         self.penalties = [0] * self.num_players
         self.is_first_trick = True
         self.leading_hearts_allowed = False
+
+        self.prev_hands = [[] for _ in range(self.num_players)]
+        self.prev_played_cards = [None] * self.num_players
+        self.prev_table_cards = []
+        self.prev_collected = [[] for _ in range(self.num_players)]
+        self.prev_was_illegals = [None] * self.num_players
+        self.prev_states = [None] * self.num_players
+        self.prev_was_first_trick = None
+        self.prev_leading_hearts_allowed = [None] * self.num_players
+
+        self.prev_trick_winner_index = None
         self.prev_trick_penalty = None
+        self.prev_leading_suit = None
+        self.prev_leading_player_index = None
+
         # FIXME implement proper discarding (remove as many as needed from 2C, 2D, 3C, 2S)
 
         self.collected = [[] for _ in range(self.num_players)]

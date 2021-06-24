@@ -166,12 +166,6 @@ class HeartsEnv(MultiAgentEnv):
         from .reward_function import RewardFunction
         self.reward_function = RewardFunction(self)
 
-        self.prev_states: List[np.ndarray] = [None] * self.game.num_players
-        """State before the last action for each player.
-
-        `None` if no action has been taken yet.
-        """
-
     def seed(self, seed: GymSeed = None) -> List[int]:
         """Return a strong seed for this environment's random
         number generator(s).
@@ -427,7 +421,6 @@ class HeartsEnv(MultiAgentEnv):
         leading_player_index = self.game.leading_player_index
         active_player_index = self.game.active_player_index
         assert active_player_index == next(iter(action_dict.keys()))
-        self.prev_states[active_player_index] = self.game.state.copy()
 
         card, was_illegal, trick_winner_index, trick_penalty = \
             self.game.play_card(action_dict[active_player_index])

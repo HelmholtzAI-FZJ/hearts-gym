@@ -36,9 +36,8 @@ class RewardFunction:
         arguments are unrelated to the player getting their reward. This
         is because agents receive their reward only when it is their
         next turn, not right after their turn. Due to this peculiarity,
-        it is encouraged to use `self.env.prev_states`,
-        `self.game.prev_played_cards`, `self.game.prev_was_illegals`,
-        and others.
+        it is encouraged to use `self.game.prev_played_cards`,
+        `self.game.prev_was_illegals`, and others.
 
         Args:
             player_index (int): Index of the player to return the reward
@@ -77,8 +76,7 @@ class RewardFunction:
         # if self.game.is_done():
         #     return -penalty
 
-        prev_trick_winner_index = self.game.leading_player_index
-        if prev_trick_winner_index == player_index:
+        if self.game.prev_trick_winner_index == player_index:
             assert self.game.prev_trick_penalty is not None
             return -self.game.prev_trick_penalty
         return 1
