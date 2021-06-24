@@ -370,7 +370,24 @@ class HeartsServer(TCPServer):
             replace_with_bot: bool,
             client_error_msg: str,
     ) -> Optional[bytes]:
-        # FIXME docstring
+        """Return a message received from the client in a failsafe way.
+        If something went wrong, return `None`.
+
+        Args:
+            client (Client): Client to receive the data from.
+            max_receive_bytes (int): How many bytes to receive
+                at maximum.
+            timeout_sec (int): How long to wait for the message at
+                maximum.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
+            client_error_msg (str): Error message to send to the client
+                upon failure.
+
+        Returns:
+            Optional[bytes]: The message received or `None` if there was
+                an error.
+        """
         request = client.request
         prev_timeout = request.gettimeout()
         request.settimeout(timeout_sec)
@@ -400,7 +417,29 @@ class HeartsServer(TCPServer):
             replace_with_bot: bool,
             client_error_msg: str,
     ) -> Optional[Tuple[int, bytes]]:
-        # FIXME docstring
+        """Return the expected length of a message received from the
+        client in a failsafe way. If something went wrong,
+        return `None`.
+
+        To be more efficient, receive more data than necessary. Any
+        additional data is returned.
+
+        Args:
+            client (Client): Client to receive the data from.
+            max_receive_bytes (int): How many bytes to receive
+                at maximum.
+            timeout_sec (int): How long to wait for the message at
+                maximum.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
+            client_error_msg (str): Error message to send to the client
+                upon failure.
+
+        Returns:
+            Optional[Tuple[int, bytes]]: Amount of bytes in the rest of
+                the message and the extraneous part of message data
+                received, or `None` if there was an error.
+        """
         data_shard = self._receive_shard(
             client,
             max_receive_bytes,
@@ -964,7 +1003,18 @@ class HeartsRequestHandler(BaseRequestHandler):
             player_index: int,
             client: Client,
     ) -> Tuple[Client, bytes, bool]:
-        # FIXME docstring
+        """Return a message received from the client in a failsafe way.
+
+        Args:
+            player_index (int): Which player we are getting the
+                message from.
+            client (Client): Client to receive the data from.
+
+        Returns:
+            Client: The original client or its replacement.
+            bytes: The message or a default if there was an error.
+            bool: Whether there was an error.
+        """
         try:
             data = client.request.recv(self.max_receive_bytes)
         except Exception:
@@ -982,7 +1032,24 @@ class HeartsRequestHandler(BaseRequestHandler):
             player_index: int,
             client: Client,
     ) -> Tuple[Client, int, bytes]:
-        # FIXME docstring
+        """Return the expected length of a message received from the
+        client in a failsafe way.
+
+        To be more efficient, receive more data than necessary. Any
+        additional data is returned.
+
+        Args:
+            player_index (int): Which player we are getting the
+                message from.
+            client (Client): Client to receive the data from.
+
+        Returns:
+            Client: The original client or its replacement.
+            int: Amount of bytes in the rest of the message or a default
+                if there was an error.
+            bytes: Extraneous part of message data or a default if there
+                was an error.
+        """
         client, data_shard, successful = self._receive_shard(
             player_index, client)
         total_num_received_bytes = len(data_shard)
@@ -1012,7 +1079,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 )
             )
             self.server.logger.warn(
-                f'Client {client.address} did not send message length. '
+                f'Client {client.address} did not send action length. '
                 f'Closing connection...'
             )
             self.server.unregister_client(client, True)

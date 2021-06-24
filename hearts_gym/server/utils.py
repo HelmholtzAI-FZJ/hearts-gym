@@ -151,7 +151,12 @@ def send_name(client: socket.socket, name: Optional[str]) -> None:
 
 
 def send_actions(client: socket.socket, actions: TensorType) -> None:
-    # FIXME docstring
+    """Send the given actions from the client to the server.
+
+    Args:
+        client (socket.socket): Socket of the client.
+        actions (TensorType): Actions to execute on the server.
+    """
     try:
         client.sendall(encode_actions(actions))
     except Exception:
