@@ -7,7 +7,8 @@ from json import JSONDecodeError
 from pathlib import Path
 import socket
 import sys
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
+import zlib
 
 import ray
 from ray.rllib.utils.typing import TensorType
@@ -23,6 +24,7 @@ from hearts_gym.server.hearts_server import (
 )
 from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
+# Small power of two as recommended by Python documentation.
 MAX_RECEIVE_BYTES = 8192
 ENV_NAME = 'Hearts-v0'
 LEARNED_POLICY_ID = 'learned'
@@ -113,6 +115,50 @@ def _receive_data_shard(
     return data
 
 
+def _receive_msg_length(
+        client: socket.socket,
+        max_receive_bytes: int,
+) -> Tuple[int, bytes]:
+    """Return the expected length of a message received from the server
+    in a failsafe way.
+
+    To be more efficient, this function receives more data than
+    necessary. Any additional data is returned.
+
+    If the server stopped, exit the program.
+
+    Args:
+        client (socket.socket): Socket of the client.
+        max_receive_bytes (int): Number of bytes to receive at maximum
+            per message shard.
+
+    Returns:
+        int: Amount of bytes in the rest of the message.
+        bytes: Extraneous part of message data received.
+    """
+    data_shard = _receive_data_shard(client, max_receive_bytes)
+    total_num_received_bytes = len(data_shard)
+    data = [data_shard]
+    length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+    while (
+            length_end == -1
+            and total_num_received_bytes < server_utils.MAX_MSG_PREFIX_LENGTH
+    ):
+        data_shard = _receive_data_shard(client, max_receive_bytes)
+        total_num_received_bytes += len(data_shard)
+        data.append(data_shard)
+        length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+
+    assert length_end != -1, 'server did not send message length'
+
+    length_end += total_num_received_bytes - len(data_shard)
+    data = b''.join(data)
+    msg_length = int(data[:length_end])
+    extra_data = data[length_end + len(server_utils.MSG_LENGTH_SEPARATOR):]
+
+    return msg_length, extra_data
+
+
 def receive_data(
         client: socket.socket,
         max_receive_bytes: int,
@@ -134,23 +180,29 @@ def receive_data(
         Any: Data received or an error message string if there
             were problems.
     """
-    data: List[bytes] = []
+    msg_length, data_shard = _receive_msg_length(client, max_receive_bytes)
+    assert msg_length < max_total_receive_bytes, 'message is too long'
 
-    data_shard = _receive_data_shard(client, max_receive_bytes)
     total_num_received_bytes = len(data_shard)
-    data.append(data_shard)
-    while (
-            len(data_shard) == max_receive_bytes
-            and total_num_received_bytes <= max_total_receive_bytes
-    ):
+    data = [data_shard]
+    while total_num_received_bytes < msg_length:
         data_shard = _receive_data_shard(client, max_receive_bytes)
         total_num_received_bytes += len(data_shard)
         data.append(data_shard)
 
+    assert total_num_received_bytes == msg_length, \
+        'message does not match length'
+
+    # FIXME remove this
+    # if len(data_shard) != max_receive_bytes:
+    #     print('data shard was not full')
+    # if total_num_received_bytes > max_total_receive_bytes:
+    #     print('received more bytes than expected')
+
     data = b''.join(data)
     try:
         data = server_utils.decode_data(data)
-    except JSONDecodeError as ex:
+    except (JSONDecodeError, zlib.error) as ex:
         print('Failed decoding:', data)
         print('Error message:', str(ex))
         return '[See decoding error message.]'
@@ -274,12 +326,7 @@ def main() -> None:
 
                 if len(data) == 0:
                     # We have no observations; send no actions.
-                    try:
-                        client.sendall(b',')
-                    except Exception:
-                        print('Unable to send data to server.')
-                        raise
-                    continue
+                    server_utils.send_actions(client, [])
 
                 if not isinstance(data[0], list):
                     obss = data
@@ -306,11 +353,7 @@ def main() -> None:
                 )
                 # print('Actions:', actions)
 
-                try:
-                    client.sendall(server_utils.encode_actions(actions))
-                except Exception:
-                    print('Unable to send data to server.')
-                    raise
+                server_utils.send_actions(client, actions)
 
                 prev_actions = actions
 

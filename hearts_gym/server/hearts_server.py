@@ -133,13 +133,6 @@ class HeartsServer(TCPServer):
                 activate the server upon construction.
         """
         assert num_parallel_games > 0, 'must have at least one game'
-        max_receive_bytes = HeartsRequestHandler.calculate_max_receive_bytes(
-            num_parallel_games
-        )
-        assert max_receive_bytes < server_utils.MAX_PACKAGE_SIZE, (
-            'number of parallel games is too high; '
-            'could cause issues due to package size'
-        )
         assert num_procs > 0, 'must have at least one process'
         assert (
             max_num_games is None
@@ -261,15 +254,16 @@ class HeartsServer(TCPServer):
             client_address: Address,
     ) -> bool:
         self.logger.info(f'Verifying {client_address}...')
-        if (
-                len(self.clients) >= self._max_num_clients
-                or (
-                    not self._accept_repeating_client_address
-                    and self._has_client_address(client_address)
-                )
-        ):
-            self.logger.info('Rejected.')
-            return False
+        with self._client_change_lock:
+            if (
+                    len(self.clients) >= self._max_num_clients
+                    or (
+                        not self._accept_repeating_client_address
+                        and self._has_client_address(client_address)
+                    )
+            ):
+                self.logger.info('Rejected.')
+                return False
 
         self.logger.info('Accepted.')
         return True
@@ -368,6 +362,101 @@ class HeartsServer(TCPServer):
             if replace_with_bot:
                 self.register_bot(client_index)
 
+    def _receive_shard(
+            self,
+            client: Client,
+            max_receive_bytes: int,
+            timeout_sec: int,
+            replace_with_bot: bool,
+            client_error_msg: str,
+    ) -> Optional[bytes]:
+        # FIXME docstring
+        request = client.request
+        prev_timeout = request.gettimeout()
+        request.settimeout(timeout_sec)
+
+        try:
+            data = request.recv(max_receive_bytes)
+        except OSError:
+            request.settimeout(prev_timeout)
+            self.send_failable(client, client_error_msg)
+            self.logger.warn(
+                f'Client {client.address} did not respond in time.')
+            self.unregister_client(client, replace_with_bot)
+            return None
+        except Exception:
+            self.logger.warn(f'Lost client {client.address}.')
+            self.unregister_client(client, replace_with_bot)
+            return None
+
+        request.settimeout(prev_timeout)
+        return data
+
+    def _receive_msg_length(
+            self,
+            client: Client,
+            max_receive_bytes: int,
+            timeout_sec: int,
+            replace_with_bot: bool,
+            client_error_msg: str,
+    ) -> Optional[Tuple[int, bytes]]:
+        # FIXME docstring
+        data_shard = self._receive_shard(
+            client,
+            max_receive_bytes,
+            timeout_sec,
+            replace_with_bot,
+            client_error_msg,
+        )
+        if data_shard is None:
+            return None
+        total_num_received_bytes = len(data_shard)
+        data = [data_shard]
+        length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+
+        while (
+                length_end == -1
+                and (
+                    total_num_received_bytes
+                    < server_utils.MAX_MSG_PREFIX_LENGTH
+                )
+        ):
+            data_shard = self._receive_shard(
+                client,
+                max_receive_bytes,
+                timeout_sec,
+                replace_with_bot,
+                client_error_msg,
+            )
+            if data_shard is None:
+                return None
+            total_num_received_bytes += len(data_shard)
+            data.append(data_shard)
+            length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+
+        if length_end == -1:
+            self.send_failable(
+                client,
+                (
+                    f'Please prefix messages with unknown length with '
+                    f'their length and '
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.encode()}".'
+                )
+            )
+            self.logger.warn(
+                f'Client {client.address} did not send message length. '
+                f'Closing connection...'
+            )
+            self.unregister_client(client, replace_with_bot)
+            return None
+
+        length_end += total_num_received_bytes - len(data_shard)
+        data = b''.join(data)
+        msg_length = int(data[:length_end])
+        extra_data = data[length_end + len(server_utils.MSG_LENGTH_SEPARATOR):]
+
+        return msg_length, extra_data
+
     def receive_name(
             self,
             client: Client,
@@ -385,36 +474,64 @@ class HeartsServer(TCPServer):
             bool: Whether a name was correctly received in the allowed
                 time frame.
         """
-        request = client.request
         if timeout_sec is None:
             timeout_sec = self.OK_TIMEOUT_SEC
 
-        prev_timeout = request.gettimeout()
-        request.settimeout(timeout_sec)
-
-        try:
-            data = request.recv(Client.MAX_NAME_BYTES)
-        except OSError:
-            request.settimeout(prev_timeout)
+        msg_length, data_shard = self._receive_msg_length(
+                client,
+                Client.MAX_NAME_BYTES,
+                timeout_sec,
+                False,
+                (
+                    f'Please send a name with a length of '
+                    f'{Client.MAX_NAME_BYTES} bytes at maximum; '
+                    f'closing connection...'
+                ),
+        )
+        if msg_length > Client.MAX_NAME_BYTES:
             self.send_failable(
                 client,
+                'Declared name length is too long.',
+            )
+            self.logger.warn(
+                f'Client {client.address} declared too long name. '
+                f'Closing connection...'
+            )
+            self.unregister_client(client, False)
+            return False
+
+        total_num_received_bytes = len(data_shard)
+        data = [data_shard]
+        while total_num_received_bytes < msg_length:
+            data_shard = self._receive_shard(
+                client,
+                Client.MAX_NAME_BYTES,
+                timeout_sec,
+                False,
                 (
                     f'Please send a name with a length of '
                     f'{Client.MAX_NAME_BYTES} bytes at maximum; '
                     f'closing connection...'
                 ),
             )
+            if data_shard is None:
+                return False
+            total_num_received_bytes += len(data_shard)
+            data.append(data_shard)
+
+        if total_num_received_bytes != msg_length:
+            self.send_failable(
+                client,
+                'Message had a different length than declared.',
+            )
             self.logger.warn(
-                f'Client {client.address} did not respond in time.')
-            self.unregister_client(client, False)
-            return False
-        except Exception:
-            self.logger.warn(f'Lost client {client.address}.')
+                f'Client {client.address} declared different message length. '
+                f'Closing connection...'
+            )
             self.unregister_client(client, False)
             return False
 
-        request.settimeout(prev_timeout)
-
+        data = b''.join(data)
         # We assume the client does not want to set a name.
         if data == server_utils.OK_MSG:
             return True
@@ -458,34 +575,40 @@ class HeartsServer(TCPServer):
             bool: Whether the message was correctly received in the
                 allowed time frame.
         """
-        request = client.request
         if timeout_sec is None:
             timeout_sec = self.OK_TIMEOUT_SEC
 
-        prev_timeout = request.gettimeout()
-        request.settimeout(timeout_sec)
-
-        try:
-            data = request.recv(len(server_utils.OK_MSG))
-        except OSError:
-            request.settimeout(prev_timeout)
-            self.send_failable(
+        data_shard = self._receive_shard(
+            client,
+            len(server_utils.OK_MSG),
+            timeout_sec,
+            replace_with_bot,
+            (
+                f'Please respond with "{server_utils.OK_MSG.decode()}"; '
+                f'closing connection...'
+            ),
+        )
+        if data_shard is None:
+            return False
+        total_num_received_bytes = len(data_shard)
+        data = [data_shard]
+        while total_num_received_bytes < len(server_utils.OK_MSG):
+            data_shard = self._receive_shard(
                 client,
+                len(server_utils.OK_MSG),
+                timeout_sec,
+                replace_with_bot,
                 (
                     f'Please respond with "{server_utils.OK_MSG.decode()}"; '
                     f'closing connection...'
                 ),
             )
-            self.logger.warn(
-                f'Client {client.address} did not respond in time.')
-            self.unregister_client(client, replace_with_bot)
-            return False
-        except Exception:
-            self.logger.warn(f'Lost client {client.address}.')
-            self.unregister_client(client, replace_with_bot)
-            return False
+            if data_shard is None:
+                return False
+            total_num_received_bytes += len(data_shard)
+            data.append(data_shard)
 
-        request.settimeout(prev_timeout)
+        data = b''.join(data)
         if data == server_utils.OK_MSG:
             return True
 
@@ -752,8 +875,9 @@ class HeartsServer(TCPServer):
 
         # We lost a client while joining threads.
         if len(self.clients) < self._max_num_clients:
-            for client in self.clients.values():
-                self._start_waiter_thread(client)
+            with self._client_change_lock:
+                for client in self.clients.values():
+                    self._start_waiter_thread(client)
             return
 
         self.print_log('Starting game loop...')
@@ -785,6 +909,7 @@ class HeartsRequestHandler(BaseRequestHandler):
     ), '`MAX_BYTES_PER_ACTION` must be a power of two'
 
     PARSE_FAIL_TOLERANCE = 2
+    ACTION_TIMEOUT_SEC = 1
     OK_TIMEOUT_SEC = 2
 
     @staticmethod
@@ -807,9 +932,87 @@ class HeartsRequestHandler(BaseRequestHandler):
         self.server: HeartsServer
         self.max_receive_bytes = \
             self.calculate_max_receive_bytes(self.server.num_parallel_games)
+        self.max_prefix_len = (
+            len(str(self.max_receive_bytes))
+            + len(server_utils.MSG_LENGTH_SEPARATOR)
+        )
+        for client in self.server.clients.values():
+            client.request.settimeout(self.ACTION_TIMEOUT_SEC)
 
         num_players = len(self.server.clients)
         self._communicators = ThreadPool(processes=num_players)
+
+    def _receive_shard(
+            self,
+            player_index: int,
+            client: Client,
+    ) -> Tuple[Client, bytes, bool]:
+        # FIXME docstring
+        try:
+            data = client.request.recv(self.max_receive_bytes)
+        except Exception:
+            self.server.logger.warn(f'Lost client {client.address}.')
+            self.server.unregister_client(client, True)
+            # Get random action from newly registered bot.
+            client = self.server.clients[player_index]
+            data = client.request.recv(self.max_receive_bytes)
+            return client, data, False
+
+        return client, data, True
+
+    def _receive_msg_length(
+            self,
+            player_index: int,
+            client: Client,
+    ) -> Tuple[Client, int, bytes]:
+        # FIXME docstring
+        client, data_shard, successful = self._receive_shard(
+            player_index, client)
+        total_num_received_bytes = len(data_shard)
+        data = [data_shard]
+        length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+        while (
+                successful
+                and length_end == -1
+                and total_num_received_bytes < self.max_prefix_len
+        ):
+            client, data_shard, successful = self._receive_shard(
+                player_index, client)
+            total_num_received_bytes = len(data_shard)
+            data.append(data_shard)
+            length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+
+        if not successful:
+            total_num_received_bytes = len(data_shard)
+            data = [data_shard]
+
+        if length_end == -1:
+            self.server.send_failable(
+                client,
+                (
+                    f'Please prefix actions with their length and '
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
+                )
+            )
+            self.server.logger.warn(
+                f'Client {client.address} did not send message length. '
+                f'Closing connection...'
+            )
+            self.server.unregister_client(client, True)
+            # Get random action from newly registered bot.
+            client = self.server.clients[player_index]
+            data_shard = client.request.recv(self.max_receive_bytes)
+
+            total_num_received_bytes = len(data_shard)
+            data = [data_shard]
+            length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
+
+        length_end += total_num_received_bytes - len(data_shard)
+        data = b''.join(data)
+        msg_length = int(data[:length_end])
+        extra_data = data[length_end + len(server_utils.MSG_LENGTH_SEPARATOR):]
+
+        return client, msg_length, extra_data
 
     def _parse_message(
             self,
@@ -828,13 +1031,42 @@ class HeartsRequestHandler(BaseRequestHandler):
                 if there was an error.
         """
         for _ in range(self.PARSE_FAIL_TOLERANCE + 1):
-            try:
-                data = client.request.recv(self.max_receive_bytes)
-            except Exception:
-                self.server.logger.warn(f'Lost client {client.address}.')
+            client, msg_length, data_shard = self._receive_msg_length(
+                player_index, client)
+
+            successful = True
+            total_num_received_bytes = len(data_shard)
+            data = [data_shard]
+            while (
+                    successful
+                    and total_num_received_bytes < msg_length
+            ):
+                client, data_shard, successful = self._receive_shard(
+                    player_index, client)
+                total_num_received_bytes += len(data_shard)
+                data.append(data_shard)
+
+            if successful and total_num_received_bytes != msg_length:
+                self.server.send_failable(
+                    client,
+                    'Actions had a different length than declared.',
+                )
+                self.server.logger.warn(
+                    f'Client {client.address} declared different actions '
+                    f'length. Closing connection...'
+                )
                 self.server.unregister_client(client, True)
-                # Get random action
-                data = client.request.recv(self.max_receive_bytes)
+                # Get random action from newly registered bot.
+                client = self.server.clients[player_index]
+                data_shard = client.request.recv(self.max_receive_bytes)
+
+            if not successful:
+                data_shard = data_shard.partition(
+                    server_utils.MSG_LENGTH_SEPARATOR)[2]
+                total_num_received_bytes = len(data_shard)
+                data = [data_shard]
+
+            data = b''.join(data)
 
             self.server.logger.debug(f'Received data:\n{data.decode()}')
             try:

@@ -14,10 +14,30 @@ from hearts_gym.envs.hearts_env import Action
 Request = socket.socket
 Address = Tuple[str, int]
 
-MAX_PACKAGE_SIZE = 65535
 OK_MSG = b'__OK'
 
+MSG_LENGTH_SEPARATOR = b';'
 ACTION_SEPARATOR = b','
+
+MAX_MSG_BYTES = 999_999_999  # Allow messages of up to 1 GB.
+MAX_MSG_PREFIX_LENGTH = len(str(MAX_MSG_BYTES)) + len(MSG_LENGTH_SEPARATOR)
+"""Maximum string length of the message length prefix, including
+the separator.
+"""
+
+
+def prefix_data(data: bytes) -> bytes:
+    """Return the given data prefixed with its length.
+
+    Args:
+        data (bytes): Data to prefix.
+
+    Returns:
+        bytes: Prefixed data ready for unknown-length receipt.
+    """
+    data_len = len(data)
+    assert data_len <= MAX_MSG_BYTES, 'message is too large'
+    return str(data_len).encode() + MSG_LENGTH_SEPARATOR + data
 
 
 def encode_int(integer: int) -> bytes:
@@ -43,11 +63,18 @@ def encode_actions(actions: TensorType) -> bytes:
     Returns:
         bytes: Actions encoded as bytes.
     """
-    return ACTION_SEPARATOR.join(map(encode_int, actions))
+    if len(actions) == 0:
+        data = ACTION_SEPARATOR
+    else:
+        data = ACTION_SEPARATOR.join(map(encode_int, actions))
+    data = prefix_data(data)
+    return data
 
 
 def decode_actions(data: bytes) -> List[Action]:
     """Parse actions from the given message data.
+
+    It is assumed that the data has been stripped of its prefix.
 
     Args:
         data (bytes): The message received.
@@ -67,17 +94,21 @@ def encode_data(data: Any) -> bytes:
         data (Any): Data to encode for sending.
 
     Returns:
-        bytes: Encoded data.
+        bytes: Encoded data, prefixed with the length of the data and
+            a `MSG_LENGTH_SEPARATOR`.
     """
     data: str = json.dumps(data, separators=(',', ':'))
     data: bytes = data.encode()
     data: bytes = zlib.compress(data)
+    data: bytes = prefix_data(data)
     return data
 
 
 def decode_data(data: bytes) -> Any:
     """Return the given data decoded from a message from server
     to client.
+
+    It is assumed that the data has been stripped of its prefix.
 
     Args:
         data (bytes): Received data to decode.
@@ -108,11 +139,21 @@ def send_name(client: socket.socket, name: Optional[str]) -> None:
         name (str): Name the client wants to be identified by.
     """
     if name is None:
-        send_ok(client)
+        name = OK_MSG
         return
 
+    data = prefix_data(name.encode())
     try:
-        client.sendall(name.encode())
+        client.sendall(data)
+    except Exception:
+        print('Unable to send data to server.')
+        raise
+
+
+def send_actions(client: socket.socket, actions: TensorType) -> None:
+    # FIXME docstring
+    try:
+        client.sendall(encode_actions(actions))
     except Exception:
         print('Unable to send data to server.')
         raise
