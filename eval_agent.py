@@ -194,10 +194,12 @@ def main() -> None:
     if name is not None:
         Client.check_name_length(name.encode())
 
-    ray.init()
-
     algorithm = args.algorithm
     checkpoint_path = Path(args.checkpoint_path)
+    assert not checkpoint_path.is_dir(), \
+        'please pass the checkpoint file, not its directory'
+
+    ray.init()
 
     with server_utils.create_client() as client:
         client.connect((args.server_address, args.port))
