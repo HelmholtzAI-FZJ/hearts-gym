@@ -23,7 +23,7 @@ python -m pydoc hearts_gym.envs.hearts_game.HeartsGame
 
 ## Installing
 
-Supported Python versions are shown in `./setup.py` under the
+Supported Python versions are shown in `setup.py` under the
 `python_requires` argument. Clone this repository so you can easily
 modify it, replacing `<repo-uri>` with the URI of this repo.
 
@@ -72,7 +72,7 @@ We use [RLlib](https://docs.ray.io/en/master/rllib.html) with the
 recommended [Tune](https://docs.ray.io/en/master/tune/index.html) API
 to manage training experiments.
 
-The main script for starting a training run is `./train.py`, started
+The main script for starting a training run is `train.py`, started
 like this:
 
 ```shell
@@ -99,30 +99,30 @@ testing took 98.7654321 seconds
 | random  |    [...] |    [...] |    [...] |    [...] |         [...] |
 ```
 
-In `./train.py`, you will find lots of [configuration options which
-are described here](#configuration). Results including configuration
-and checkpoints are saved in the `./results` directory by default.
-After training, your agent is automatically evaluated as well.
+In `train.py`, you will find lots of [configuration options which are
+described here](#configuration). Results including configuration and
+checkpoints are saved in the `results` directory by default. After
+training, your agent is automatically evaluated as well.
 
 To optimize your agent, the main thing you want to modify is the
 `hearts_gym.RewardFunction.compute_reward` method in
-`./hearts_gym/envs/reward_function.py` with which you can shape the
+`hearts_gym/envs/reward_function.py` with which you can shape the
 reward function for your agent, adjusting its behaviour. Variables and
 functions that may help you during this step are described in
-[`./docs/reward-shaping.md`](./docs/reward-shaping.md).
+[`docs/reward-shaping.md`](./reward-shaping.md).
 
 You should not modify the observations of the environment because we
 rely on their structure for remote interaction. If you do decide to
 modify them, you need to apply the same transformations in the
-`./eval_agent.py` script so that the observations received from the
+`eval_agent.py` script so that the observations received from the
 remote server match what your trained model expects.
 
 ### Evaluation
 
-Aside from the local evaluation in `./train.py`, you can start a
-server and connect to it with different clients. You may want to
-configure the variables `SERVER_ADDRESS` and `PORT` in
-`./hearts_gym/envs/hearts_server.py` to obtain sensible defaults.
+Aside from the local evaluation in `train.py`, you can start a server
+and connect to it with different clients. You may want to configure
+the variables `SERVER_ADDRESS` and `PORT` in
+`hearts_gym/envs/hearts_server.py` to obtain sensible defaults.
 
 To start the server, execute the following:
 
@@ -149,7 +149,7 @@ python eval_agent.py results/PPO/PPO_Hearts-v0_00000_00000_0_1970-01-01_00-00-00
 ```
 
 Since the server will wait until enough players are connected, you
-should either execute the `./eval_agent.py` script multiple times in
+should either execute the `eval_agent.py` script multiple times in
 different shells or allow the server to use simulated agents. When a
 client disconnects during games, they will be replaced with a randomly
 acting agent.
@@ -160,14 +160,14 @@ for more information.
 
 ### Configuration
 
-In the `./train.py` script, you will find several configuration options
+In the `train.py` script, you will find several configuration options
 and dictionaries such as `stop_config`, `model_config` or the main
 `config`. These are used to configure RLlib; possible options and
 default values can be found at the following locations:
 
 | Configuration               | Textual                                                                                                      | Code                                                                             |
 |-----------------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| `env_config`                | `python -m pydoc hearts_gym.HeartsEnv.__init__`                                                              | `./hearts_gym/envs/hearts_env.py`                                                |
+| `env_config`                | `python -m pydoc hearts_gym.HeartsEnv.__init__`                                                              | `hearts_gym/envs/hearts_env.py`                                                  |
 | `model_config`              | [RLlib Models](https://docs.ray.io/en/master/rllib-models.html#default-model-config-settings)                | `ray/rllib/models/catalog.py`                                                    |
 | `config`                    | [RLlib Training](https://docs.ray.io/en/master/rllib-training.html#common-parameters)                        | `ray/rllib/agents/trainer.py`                                                    |
 | Algorithm-specific `config` | [RLlib Algorithms](https://docs.ray.io/en/master/rllib-algorithms.html) (bottom of each algorithm's section) | `ray/rllib/agents/<algo>/<algo>.py` (replace `<algo>` with the algorithm's name) |
