@@ -2,6 +2,7 @@
 Train and evaluate an agent in a multi-agent setting using RLlib.
 """
 
+import os
 from typing import Any, Callable, List
 
 import ray
@@ -171,6 +172,8 @@ def main() -> None:
     # RLLib config
 
     algorithm = 'PPO'
+    # Use `None` to not load a checkpoint.
+    checkpoint_path = None
 
     env_name = 'Hearts-v0'
     env_config = {
@@ -251,6 +254,9 @@ def main() -> None:
         print('Warning: you are not evaluating a learned policy; '
               'modify `eval_policy_mapping` to change this')
 
+    assert checkpoint_path is None or not os.path.isdir(checkpoint_path), \
+        'please pass the checkpoint file, not its directory'
+
     analysis = tune.run(
         algorithm,
         stop=stop_config,
@@ -261,6 +267,7 @@ def main() -> None:
         checkpoint_at_end=True,
         scheduler=scheduler,
         # resume=True,
+        restore=checkpoint_path,
     )
 
     # Testing
