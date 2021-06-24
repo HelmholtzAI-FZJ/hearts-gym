@@ -522,7 +522,7 @@ class HeartsServer(TCPServer):
         while total_num_received_bytes < msg_length:
             data_shard = self._receive_shard(
                 client,
-                Client.MAX_NAME_BYTES,
+                Client.MAX_NAME_BYTES - total_num_received_bytes,
                 timeout_sec,
                 False,
                 (
@@ -612,7 +612,7 @@ class HeartsServer(TCPServer):
         while total_num_received_bytes < len(server_utils.OK_MSG):
             data_shard = self._receive_shard(
                 client,
-                len(server_utils.OK_MSG),
+                len(server_utils.OK_MSG) - total_num_received_bytes,
                 timeout_sec,
                 replace_with_bot,
                 (
