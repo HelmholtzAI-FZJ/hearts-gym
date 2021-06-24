@@ -11,12 +11,16 @@ rules need to be followed for successful communication.
 The client and server communicate using TCP sockets. TCP packages may
 at maximum be 65535 bytes in length.
 
-Each message should be clearly separated from the next one. This is
-why the client responds with an 'OK' message to the server after
+Each message should be clearly separated from the next one. For this,
+we prefix messages of unknown length with their length and the
+`hearts_gym.server_utils.MSG_LENGTH_SEPARATOR`. As an additional
+method, the client responds with an 'OK' message to the server after
 receiving a message. During the game loop, this is mostly not required
 as messages are already clearly separated due to the nature of the
 game. The exception is upon game end where each client receives
-information before a new, random starting player is picked.
+information before a new, random starting player is picked. 'OK'
+messages are also used to assert that clients are still able to
+communicate.
 
 If we were to process only one environment in parallel, sending one
 action and receiving one observation on the client each time,
@@ -26,8 +30,9 @@ observations to the clients whose turn it is. Unless the rare case
 pops up where it is not a client's turn in any game, all clients
 interact with different environments at the same time.
 
-The server sends gzipped, JSON-encoded messages and receives
-non-encoded 'OK' messages as well as actions that are either:
+The server sends length-prefixed, gzipped, JSON-encoded messages and
+receives non-encoded 'OK' messages as well as length-prefixed actions
+that are either:
 - A single integer.
 - Multiple integers separated by
   `hearts_gym.envs.server_utils.ACTION_SEPARATOR`.
