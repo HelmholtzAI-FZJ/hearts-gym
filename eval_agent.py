@@ -122,8 +122,8 @@ def _receive_msg_length(
     """Return the expected length of a message received from the server
     in a failsafe way.
 
-    To be more efficient, this function receives more data than
-    necessary. Any additional data is returned.
+    To be more efficient, receive more data than necessary. Any
+    additional data is returned.
 
     If the server stopped, exit the program.
 
@@ -192,12 +192,6 @@ def receive_data(
 
     assert total_num_received_bytes == msg_length, \
         'message does not match length'
-
-    # FIXME remove this
-    # if len(data_shard) != max_receive_bytes:
-    #     print('data shard was not full')
-    # if total_num_received_bytes > max_total_receive_bytes:
-    #     print('received more bytes than expected')
 
     data = b''.join(data)
     try:
