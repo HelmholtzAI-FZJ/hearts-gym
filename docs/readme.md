@@ -91,7 +91,9 @@ training, your agent is automatically evaluated as well.
 To optimize your agent, the main thing you want to modify is the
 `hearts_gym.RewardFunction.compute_reward` method in
 `./hearts_gym/envs/reward_function.py` with which you can shape the
-reward function for your agent, adjusting its behaviour.
+reward function for your agent, adjusting its behaviour. Variables and
+functions that may help you during this step are described in
+[`./docs/reward-shaping.md`](./docs/reward-shaping.md).
 
 You should not modify the observations of the environment because we
 rely on their structure for remote interaction. If you do decide to
