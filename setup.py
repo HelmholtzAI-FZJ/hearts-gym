@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'gym>=0.18.0',
         'numpy>=1.17',
-        'ray[default,rllib,tune]>=1.3.0,<2.0',
+        # 1.4.0 has forced TensorFlow installation.
+        'ray[default,rllib,tune]>=1.3.0,!=1.4.0,<2.0',
     ],
 )
