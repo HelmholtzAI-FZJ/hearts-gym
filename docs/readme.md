@@ -80,13 +80,29 @@ python train.py
 ```
 
 If everything worked correctly, you should see a table summarizing
-test results of your learned agent against other agents. If you see
-the table, you can ignore any other errors displayed by Ray.
+test results of your learned agent against other agents printed on
+your terminal. If you see the table, you can ignore any other errors
+displayed by Ray. The table looks something like this:
 
-In there, you will find lots of [configuration options which are
-described here](#configuration). Results including configuration and
-checkpoints are saved in the `./results` directory by default. After
-training, your agent is automatically evaluated as well.
+```python
+[...]
+(pid=10101) SystemExit: 1  # Can be ignored.
+[...]
+testing took 98.7654321 seconds
+# illegal action (player 0): 0 / 63754
+# illegal action ratio (player 0): 0.0
+| policy  | # rank 1 | # rank 2 | # rank 3 | # rank 4 | total penalty |
+|---------+----------+----------+----------+----------+---------------|
+| learned |    [...] |    [...] |    [...] |    [...] |         [...] |
+| random  |    [...] |    [...] |    [...] |    [...] |         [...] |
+| random  |    [...] |    [...] |    [...] |    [...] |         [...] |
+| random  |    [...] |    [...] |    [...] |    [...] |         [...] |
+```
+
+In `./train.py`, you will find lots of [configuration options which
+are described here](#configuration). Results including configuration
+and checkpoints are saved in the `./results` directory by default.
+After training, your agent is automatically evaluated as well.
 
 To optimize your agent, the main thing you want to modify is the
 `hearts_gym.RewardFunction.compute_reward` method in
