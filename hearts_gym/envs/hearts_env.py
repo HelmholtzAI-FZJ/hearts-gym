@@ -328,66 +328,6 @@ class HeartsEnv(MultiAgentEnv):
         """Index of the currently active player."""
         return self.game.active_player_index
 
-    def compute_reward(
-            self,
-            player_index: int,
-            prev_active_player_index: int,
-            trick_winner_index: Optional[int],
-            trick_score: Optional[int],
-    ) -> Reward:
-        """Return the reward for the player with the given index.
-
-        It is important to keep in mind that most of the time, the
-        arguments are unrelated to the player getting their reward. This
-        is because agents receive their reward only when it is their
-        next turn, not right after their turn. Due to this peculiarity,
-        it is encouraged to use `self.game.prev_played_cards`,
-        `self.game.prev_was_illegals`, and others.
-
-        Args:
-            player_index (int): Index of the player to return the reward
-                for. This is most of the time _not_ the player that took
-                the action.
-            prev_active_player_index (int): Index of the previously
-                active player that took the action. In other words, the
-                active player index before the action was taken.
-            trick_winner_index (Optional[int]): Index of the player that
-                won the trick or `None` if it is still ongoing.
-            trick_score (Optional[int]): Score of the cards obtained by
-                the player that won the trick or `None` if it is
-                still ongoing.
-
-        Returns:
-            Reward: Reward for the player with the given index.
-        """
-        if self.game.prev_was_illegals[player_index]:
-            return -self.game.max_score * self.game.max_num_cards_on_hand
-
-        card = self.game.prev_played_cards[player_index]
-
-        if card is None:
-            # The agent did not take a turn until now; no information
-            # to provide.
-            return 0
-
-        if (
-                trick_winner_index is not None
-                and self.has_shot_the_moon(player_index)
-        ):
-            return self.game.max_score * self.game.max_num_cards_on_hand
-
-        # score = self.game.scores[player_index]
-
-        # if self.game.is_done():
-        #     return -score
-
-        prev_trick_winner_index = self.game.leading_player_index
-        if prev_trick_winner_index == player_index:
-            assert self.game.prev_trick_score is not None
-            return -self.game.prev_trick_score
-        return 1
-        # return -score
-
     def step(
             self,
             action_dict: MultiAction,
