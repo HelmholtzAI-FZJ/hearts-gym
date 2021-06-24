@@ -57,7 +57,7 @@ jax, _ = try_import_jax()
 
 DEFAULT_FRAMEWORK = next(
     config
-    for (fw, config) in [(tf, 'tf'), (th, 'th'), (jax, 'jax')]
+    for (fw, config) in [(tf, 'tf'), (th, 'torch'), (jax, 'jax')]
     if fw is not None
 )
 """Configuration option for the first framework available in the
