@@ -452,7 +452,24 @@ class HeartsServer(TCPServer):
 
         length_end += total_num_received_bytes - len(data_shard)
         data = b''.join(data)
-        msg_length = int(data[:length_end])
+        try:
+            msg_length = int(data[:length_end])
+        except ValueError:
+            self.send_failable(
+                client,
+                (
+                    f'Please prefix messages with unknown length with '
+                    f'only their length and '
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.encode()}".'
+                )
+            )
+            self.logger.warn(
+                f'Client {client.address} sent garbled message length. '
+                f'Closing connection...'
+            )
+            self.unregister_client(client, replace_with_bot)
+            return None
+
         extra_data = data[length_end + len(server_utils.MSG_LENGTH_SEPARATOR):]
 
         return msg_length, extra_data
@@ -1009,7 +1026,23 @@ class HeartsRequestHandler(BaseRequestHandler):
 
         length_end += total_num_received_bytes - len(data_shard)
         data = b''.join(data)
-        msg_length = int(data[:length_end])
+        try:
+            msg_length = int(data[:length_end])
+        except ValueError:
+            self.server.send_failable(
+                client,
+                (
+                    f'Please prefix actions with only their length and '
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.encode()}".'
+                )
+            )
+            self.server.logger.warn(
+                f'Client {client.address} sent garbled action length. '
+                f'Closing connection...'
+            )
+            self.server.unregister_client(client, True)
+            return None
+
         extra_data = data[length_end + len(server_utils.MSG_LENGTH_SEPARATOR):]
 
         return client, msg_length, extra_data
