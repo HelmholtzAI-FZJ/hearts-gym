@@ -139,8 +139,7 @@ def send_name(client: socket.socket, name: Optional[str]) -> None:
         name (str): Name the client wants to be identified by.
     """
     if name is None:
-        name = OK_MSG
-        return
+        name = OK_MSG.decode()
 
     data = prefix_data(name.encode())
     try:

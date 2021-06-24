@@ -479,7 +479,7 @@ class HeartsServer(TCPServer):
                 (
                     f'Please prefix messages with unknown length with '
                     f'their length and '
-                    f'"{server_utils.MSG_LENGTH_SEPARATOR.encode()}".'
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
             self.logger.warn(
@@ -499,7 +499,7 @@ class HeartsServer(TCPServer):
                 (
                     f'Please prefix messages with unknown length with '
                     f'only their length and '
-                    f'"{server_utils.MSG_LENGTH_SEPARATOR.encode()}".'
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
             self.logger.warn(
@@ -533,7 +533,7 @@ class HeartsServer(TCPServer):
         if timeout_sec is None:
             timeout_sec = self.OK_TIMEOUT_SEC
 
-        msg_length, data_shard = self._receive_msg_length(
+        receive_msg_length_result = self._receive_msg_length(
                 client,
                 Client.MAX_NAME_BYTES,
                 timeout_sec,
@@ -544,6 +544,11 @@ class HeartsServer(TCPServer):
                     f'closing connection...'
                 ),
         )
+        if receive_msg_length_result is None:
+            return False
+        data_shard: Optional[bytes]
+
+        msg_length, data_shard = receive_msg_length_result
         if msg_length > Client.MAX_NAME_BYTES:
             self.send_failable(
                 client,
@@ -1100,7 +1105,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 client,
                 (
                     f'Please prefix actions with only their length and '
-                    f'"{server_utils.MSG_LENGTH_SEPARATOR.encode()}".'
+                    f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
             self.server.logger.warn(
@@ -1108,7 +1113,12 @@ class HeartsRequestHandler(BaseRequestHandler):
                 f'Closing connection...'
             )
             self.server.unregister_client(client, True)
-            return None
+            # Get random action from newly registered bot.
+            client = self.server.clients[player_index]
+            data = client.request.recv(self.max_receive_bytes)
+
+            total_num_received_bytes = len(data)
+            length_end = data.find(server_utils.MSG_LENGTH_SEPARATOR)
 
         extra_data = data[length_end + len(server_utils.MSG_LENGTH_SEPARATOR):]
 
