@@ -231,6 +231,42 @@ def wait_for_data(
     return data
 
 
+def _take_indices(data: List[Any], indices: List[int]) -> List[Any]:
+    """Return the elements obtained by indexing into the given data
+    according to the given indices.
+
+    Args:
+        data (List[Any]): List to multi-index.
+        indices (List[int]): Indices to use; are used in the
+            order they are given in.
+
+    Returns:
+        List[Any]: Elements obtained by multi-indexing into the
+            given data.
+    """
+    return [data[i] for i in indices]
+
+
+def _update_indices(
+        values: List[Any],
+        indices: List[int],
+        new_values: List[Any],
+) -> None:
+    """Update the given list of values with new elements according to
+    the given indices.
+
+    Args:
+        values (List[Any]): List to multi-update.
+        indices (List[int]): Indices to use; are used in the
+            order they are given in.
+        new_values (List[Any]): Updated values; one for each index.
+    """
+    assert len(indices) == len(new_values), \
+        'length of indices to update and values to update with must match'
+    for (i, new_val) in zip(indices, new_values):
+        values[i] = new_val
+
+
 def main() -> None:
     """Connect to a server and play games using a loaded model."""
     args = parse_args()
@@ -308,14 +344,14 @@ def main() -> None:
         num_iters = 0
         num_games = 0
         while not _is_done(num_games, max_num_games):
-            # FIXME convert to list; then, mask states and prev_* according to env
-            # FIXME itertools.compress may help
-            # states = [utils.get_initial_state(agent, LEARNED_POLICY_ID)]
-            # prev_actions: List[Optional[TensorType]] = [None]
-            # prev_rewards: List[Optional[Reward]] = [None]
-            states: Optional[List[TensorType]] = None  # should be a dict like obs
-            prev_actions: Optional[List[TensorType]] = None
-            prev_rewards: Optional[List[Reward]] = None
+            states: List[TensorType] = [
+                utils.get_initial_state(agent, LEARNED_POLICY_ID)
+                for _ in range(num_parallel_games)
+            ]
+            prev_actions: List[Optional[TensorType]] = \
+                [None] * num_parallel_games
+            prev_rewards: List[Optional[Reward]] = \
+                [None] * num_parallel_games
 
             while True:
                 data = wait_for_data(
@@ -328,12 +364,15 @@ def main() -> None:
                     # We have no observations; send no actions.
                     server_utils.send_actions(client, [])
 
-                if not isinstance(data[0], list):
-                    obss = data
+                if len(data[0]) < 4:
+                    (indices, obss) = zip(*data)
                 else:
-                    (obss, rewards, is_dones, infos) = zip(*data)
-                    rewards = [reward[str_player_index] for reward in rewards]
-                    prev_rewards = rewards
+                    (indices, obss, rewards, is_dones, infos) = zip(*data)
+                    rewards = [
+                        reward[str_player_index]
+                        for reward in rewards
+                    ]
+                    _update_indices(prev_rewards, indices, rewards)
 
                     if is_dones[0]['__all__']:
                         break
@@ -342,12 +381,22 @@ def main() -> None:
                 obss = [obs[str_player_index] for obs in obss]
                 # print('Received', len(obss), 'observations.')
 
-                actions, states, _ = utils.compute_actions(
+                masked_prev_actions = _take_indices(prev_actions, indices)
+                masked_prev_rewards = _take_indices(prev_rewards, indices)
+                actions, new_states, _ = utils.compute_actions(
                     agent,
                     obss,
-                    states,
-                    prev_actions,
-                    prev_rewards,
+                    _take_indices(states, indices),
+                    (
+                        masked_prev_actions
+                        if None not in masked_prev_actions
+                        else None
+                    ),
+                    (
+                        masked_prev_rewards
+                        if None not in masked_prev_rewards
+                        else None
+                    ),
                     policy_id=LEARNED_POLICY_ID,
                     full_fetch=True,
                 )
@@ -355,7 +404,8 @@ def main() -> None:
 
                 server_utils.send_actions(client, actions)
 
-                prev_actions = actions
+                _update_indices(states, indices, new_states)
+                _update_indices(prev_actions, indices, actions)
 
             server_utils.send_ok(client)
             num_games += num_parallel_games

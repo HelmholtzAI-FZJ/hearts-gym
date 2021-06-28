@@ -1301,14 +1301,15 @@ class HeartsRequestHandler(BaseRequestHandler):
             self,
             player_index: int,
             data: Union[
-                List[MultiObservation],
+                List[Tuple[int, MultiObservation]],
                 List[Tuple[
+                    int,
                     MultiObservation,
                     MultiReward,
                     MultiIsDone,
                     MultiInfo,
                 ]],
-            ]
+            ],
     ) -> None:
         """Send the given data to the client corresponding to the
         given index.
@@ -1317,8 +1318,9 @@ class HeartsRequestHandler(BaseRequestHandler):
             player_index (int): Index of the client the shard should be
                 sent towards.
             data (Union[
-                List[MultiObservation],
+                List[Tuple[int, MultiObservation]],
                 List[Tuple[
+                    int,
                     MultiObservation,
                     MultiReward,
                     MultiIsDone,
@@ -1362,20 +1364,29 @@ class HeartsRequestHandler(BaseRequestHandler):
                 processed environments.
         """
         num_players = len(self.server.clients)
-        distributed_data: List[List[Union[
-            MultiObservation,
-            Tuple[
-                MultiObservation,
-                MultiReward,
-                MultiIsDone,
-                MultiInfo,
+        distributed_data: List[List[
+            Union[
+                Tuple[
+                    int,
+                    MultiObservation,
+                ],
+                Tuple[
+                    int,
+                    MultiObservation,
+                    MultiReward,
+                    MultiIsDone,
+                    MultiInfo,
+                ],
             ],
-        ]]] = [[] for _ in range(num_players)]
+        ]] = [[] for _ in range(num_players)]
 
-        for (data, env) in zip(return_data, self.server.envs):
+        for (i, (data, env)) in enumerate(zip(return_data, self.server.envs)):
             active_player_index = env.active_player_index
             active_player_data = distributed_data[active_player_index]
-            active_player_data.append(data)
+            if isinstance(data, tuple):
+                active_player_data.append((i,) + data)
+            else:
+                active_player_data.append((i, data))
 
         self._communicators.starmap(
             self._send_shard,
@@ -1515,6 +1526,13 @@ class HeartsRequestHandler(BaseRequestHandler):
             self.server.print_log(
                 f'Total placements: {self.server.total_placements}')
 
+            return_data: List[Tuple[  # type: ignore[no-redef]
+                int,
+                MultiObservation,
+                MultiReward,
+                MultiIsDone,
+                MultiInfo,
+            ]] = [(i,) + data for (i, data) in enumerate(return_data)]
             return_data: bytes = (  # type: ignore[no-redef]
                 self._encode_data(return_data)
             )
