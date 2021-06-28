@@ -147,7 +147,7 @@ class HeartsServer(TCPServer):
 
         if num_procs > num_parallel_games:
             num_procs = num_parallel_games
-            self.logger.warn(
+            self.logger.warning(
                 f'Warning: set `num_procs = {num_parallel_games}`; '
                 f'cannot have more processes than games.'
             )
@@ -397,12 +397,12 @@ class HeartsServer(TCPServer):
         except OSError:
             request.settimeout(prev_timeout)
             self.send_failable(client, client_error_msg)
-            self.logger.warn(
+            self.logger.warning(
                 f'Client {client.address} did not respond in time.')
             self.unregister_client(client, replace_with_bot)
             return None
         except Exception:
-            self.logger.warn(f'Lost client {client.address}.')
+            self.logger.warning(f'Lost client {client.address}.')
             self.unregister_client(client, replace_with_bot)
             return None
 
@@ -482,7 +482,7 @@ class HeartsServer(TCPServer):
                     f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
-            self.logger.warn(
+            self.logger.warning(
                 f'Client {client.address} did not send message length. '
                 f'Closing connection...'
             )
@@ -502,7 +502,7 @@ class HeartsServer(TCPServer):
                     f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
-            self.logger.warn(
+            self.logger.warning(
                 f'Client {client.address} sent garbled message length. '
                 f'Closing connection...'
             )
@@ -554,7 +554,7 @@ class HeartsServer(TCPServer):
                 client,
                 'Declared name length is too long.',
             )
-            self.logger.warn(
+            self.logger.warning(
                 f'Client {client.address} declared too long name. '
                 f'Closing connection...'
             )
@@ -585,7 +585,7 @@ class HeartsServer(TCPServer):
                 client,
                 'Message had a different length than declared.',
             )
-            self.logger.warn(
+            self.logger.warning(
                 f'Client {client.address} declared different message length. '
                 f'Closing connection...'
             )
@@ -791,7 +791,7 @@ class HeartsServer(TCPServer):
             client.request.sendall(data)
             return True
         except Exception:
-            self.logger.warn(f'Lost client {client.address}.')
+            self.logger.warning(f'Lost client {client.address}.')
             self.unregister_client(client, replace_with_bot)
             return False
 
@@ -916,7 +916,7 @@ class HeartsServer(TCPServer):
         self.logger.info(f'Registering {client_address}...')
         client = self.register_client(request, client_address)
         if client is None:
-            self.logger.warn('Failed.')
+            self.logger.warning('Failed.')
             self.shutdown_request(request)  # type: ignore[attr-defined]
             return
 
@@ -1023,7 +1023,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         try:
             data = client.request.recv(self.max_receive_bytes)
         except Exception:
-            self.server.logger.warn(f'Lost client {client.address}.')
+            self.server.logger.warning(f'Lost client {client.address}.')
             self.server.unregister_client(client, True)
             # Get random action from newly registered bot.
             client = self.server.clients[player_index]
@@ -1083,7 +1083,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                     f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
-            self.server.logger.warn(
+            self.server.logger.warning(
                 f'Client {client.address} did not send action length. '
                 f'Closing connection...'
             )
@@ -1108,7 +1108,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                     f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
                 )
             )
-            self.server.logger.warn(
+            self.server.logger.warning(
                 f'Client {client.address} sent garbled action length. '
                 f'Closing connection...'
             )
@@ -1161,7 +1161,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                     client,
                     'Actions had a different length than declared.',
                 )
-                self.server.logger.warn(
+                self.server.logger.warning(
                     f'Client {client.address} declared different actions '
                     f'length. Closing connection...'
                 )
@@ -1182,8 +1182,8 @@ class HeartsRequestHandler(BaseRequestHandler):
             try:
                 actions = server_utils.decode_actions(data)
             except Exception:
-                self.server.logger.warn('Error parsing data; ignoring...')
-                self.server.logger.warn(f'Data that errored:\n{str(data)}')
+                self.server.logger.warning('Error parsing data; ignoring...')
+                self.server.logger.warning(f'Data that errored:\n{str(data)}')
                 self.server.send_failable_replacing(
                     client,
                     (
