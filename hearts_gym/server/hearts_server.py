@@ -1434,7 +1434,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         return (
             self.is_done(self.server.num_games, self.server.max_num_games)
             # When we only have simulated agents left, we can just quit.
-            and not all(
+            or all(
                 isinstance(client.request, MockRequest)
                 for client in self.server.clients.values()
             )
