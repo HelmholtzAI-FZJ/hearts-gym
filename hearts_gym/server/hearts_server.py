@@ -1075,7 +1075,8 @@ class HeartsRequestHandler(BaseRequestHandler):
             if data == b'' or data is None:
                 raise ValueError('received empty data')
         except Exception:
-            self.server.logger.warning(f'Lost client {client.address}.')
+            self.server.print_log(
+                f'Lost client {client.address}.', logging.WARNING)
             client, data = self._replace_with_bot(player_index)
             return client, data, False
 
