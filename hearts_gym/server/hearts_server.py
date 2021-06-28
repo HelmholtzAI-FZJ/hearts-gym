@@ -8,7 +8,7 @@ from multiprocessing.pool import ThreadPool
 import os
 import socket
 from socketserver import BaseRequestHandler, BaseServer, TCPServer
-from threading import Lock, Thread
+from threading import RLock, Thread
 import time
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
@@ -164,7 +164,7 @@ class HeartsServer(TCPServer):
         self.num_parallel_games = num_parallel_games
         self.max_num_games = max_num_games
 
-        self._client_change_lock = Lock()
+        self._client_change_lock = RLock()
         self._waiter_threads: Dict[int, Thread] = {}
 
         self.clients: Dict[int, Client] = {}
