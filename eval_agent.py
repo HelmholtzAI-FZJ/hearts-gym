@@ -414,7 +414,7 @@ def main() -> None:
             num_games += num_parallel_games
             num_iters += 1
 
-            if num_iters % 100 == 0:
+            if num_games % 128 == 0:
                 print('Played', num_games, 'games.')
 
     ray.shutdown()
