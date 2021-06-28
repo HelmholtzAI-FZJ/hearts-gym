@@ -100,6 +100,7 @@ class VecHeartsEnv(HeartsEnv):
     def terminate_pool(self) -> None:
         """Terminate the thread pool."""
         self._pool.terminate()
+        self._pool.join()
 
     def step(  # type: ignore[override]
             self,
