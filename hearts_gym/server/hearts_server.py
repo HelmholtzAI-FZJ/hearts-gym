@@ -1003,6 +1003,26 @@ class HeartsRequestHandler(BaseRequestHandler):
         num_players = len(self.server.clients)
         self._communicators = ThreadPool(processes=num_players)
 
+    def _replace_with_bot(self, player_index: int) -> Tuple[Client, bytes]:
+        """Replace the client at the given index with a randomly acting
+        agent. Return the replacement client and its actions.
+
+        Args:
+            player_index (int): Which player/client to replace.
+
+        Returns:
+            Client: Client to receive data from in the future.
+            bytes: Random actions in message form.
+        """
+        client = self.server.clients[player_index]
+        self.server.unregister_client(client, True)
+        # Get random actions from newly registered bot.
+        client = self.server.clients[player_index]
+        assert isinstance(client.request, MockRequest), \
+            'replacing with bot failed'
+        data = client.request.recv(None)
+        return client, data
+
     def _receive_shard(
             self,
             player_index: int,
@@ -1024,10 +1044,7 @@ class HeartsRequestHandler(BaseRequestHandler):
             data = client.request.recv(self.max_receive_bytes)
         except Exception:
             self.server.logger.warning(f'Lost client {client.address}.')
-            self.server.unregister_client(client, True)
-            # Get random action from newly registered bot.
-            client = self.server.clients[player_index]
-            data = client.request.recv(self.max_receive_bytes)
+            client, data = self._replace_with_bot(player_index)
             return client, data, False
 
         return client, data, True
@@ -1087,10 +1104,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 f'Client {client.address} did not send action length. '
                 f'Closing connection...'
             )
-            self.server.unregister_client(client, True)
-            # Get random action from newly registered bot.
-            client = self.server.clients[player_index]
-            data_shard = client.request.recv(self.max_receive_bytes)
+            client, data_shard = self._replace_with_bot(player_index)
 
             total_num_received_bytes = len(data_shard)
             data = [data_shard]
@@ -1112,10 +1126,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 f'Client {client.address} sent garbled action length. '
                 f'Closing connection...'
             )
-            self.server.unregister_client(client, True)
-            # Get random action from newly registered bot.
-            client = self.server.clients[player_index]
-            data = client.request.recv(self.max_receive_bytes)
+            client, data = self._replace_with_bot(player_index)
 
             total_num_received_bytes = len(data)
             length_end = data.find(server_utils.MSG_LENGTH_SEPARATOR)
@@ -1165,10 +1176,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                     f'Client {client.address} declared different actions '
                     f'length. Closing connection...'
                 )
-                self.server.unregister_client(client, True)
-                # Get random action from newly registered bot.
-                client = self.server.clients[player_index]
-                data_shard = client.request.recv(self.max_receive_bytes)
+                client, data_shard = self._replace_with_bot(player_index)
 
             if not successful:
                 data_shard = data_shard.partition(
