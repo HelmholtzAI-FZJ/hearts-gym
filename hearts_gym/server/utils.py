@@ -19,6 +19,9 @@ OK_MSG = b'__OK'
 MSG_LENGTH_SEPARATOR = b';'
 ACTION_SEPARATOR = b','
 
+# Small power of two as recommended by Python documentation.
+MAX_RECEIVE_BYTES = 8192
+
 MAX_MSG_BYTES = 999_999_999  # Allow messages of up to 1 GB.
 MAX_MSG_PREFIX_LENGTH = len(str(MAX_MSG_BYTES)) + len(MSG_LENGTH_SEPARATOR)
 """Maximum string length of the message length prefix, including

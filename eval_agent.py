@@ -24,8 +24,6 @@ from hearts_gym.server.hearts_server import (
 )
 from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
-# Small power of two as recommended by Python documentation.
-MAX_RECEIVE_BYTES = 8192
 ENV_NAME = 'Hearts-v0'
 LEARNED_POLICY_ID = 'learned'
 
@@ -252,7 +250,11 @@ def main() -> None:
         print('Connected to server.')
         server_utils.send_name(client, name)
 
-        metadata = wait_for_data(client, MAX_RECEIVE_BYTES, MAX_RECEIVE_BYTES)
+        metadata = wait_for_data(
+            client,
+            server_utils.MAX_RECEIVE_BYTES,
+            server_utils.MAX_RECEIVE_BYTES,
+        )
         player_index = metadata['player_index']
         num_players = metadata['num_players']
         deck_size = metadata['deck_size']
@@ -262,7 +264,8 @@ def main() -> None:
 
         print(f'Positioned at index {player_index}.')
 
-        max_total_receive_bytes = MAX_RECEIVE_BYTES * num_parallel_games
+        max_total_receive_bytes = \
+            server_utils.MAX_RECEIVE_BYTES * num_parallel_games
         # We only get strings as keys.
         str_player_index = str(player_index)
 
@@ -316,7 +319,10 @@ def main() -> None:
 
             while True:
                 data = wait_for_data(
-                    client, MAX_RECEIVE_BYTES, max_total_receive_bytes)
+                    client,
+                    server_utils.MAX_RECEIVE_BYTES,
+                    max_total_receive_bytes,
+                )
 
                 if len(data) == 0:
                     # We have no observations; send no actions.
