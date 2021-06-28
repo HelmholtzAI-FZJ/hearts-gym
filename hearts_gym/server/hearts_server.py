@@ -79,6 +79,9 @@ class HeartsServer(TCPServer):
     We give clients more time here so they can get set up.
     """
 
+    PRINT_INTERVAL_SEC = 10
+    """How long to wait between messages to a waiting client."""
+
     def __init__(
             self,
             server_address: Address,
@@ -160,8 +163,6 @@ class HeartsServer(TCPServer):
         self.num_parallel_games = num_parallel_games
         self.max_num_games = max_num_games
 
-        self._print_interval_sec = 10
-        """How long to wait between messages to a waiting client."""
         self._client_change_lock = Lock()
         self._waiter_threads: Dict[int, Thread] = {}
 
@@ -849,6 +850,7 @@ class HeartsServer(TCPServer):
         num_clients = len(self.clients)
 
         start_time = time.time()
+        last_print_time = start_time
         while not self.is_closed and client.is_registered:
             prev_num_clients = num_clients
             num_clients = len(self.clients)
@@ -869,11 +871,11 @@ class HeartsServer(TCPServer):
             time.sleep(0.1)
 
             curr_time = time.time()
-            if curr_time - start_time < self._print_interval_sec:
+            if curr_time - last_print_time < self.PRINT_INTERVAL_SEC:
                 continue
 
             self.print_log('Waiting...', logging.DEBUG)
-            start_time = curr_time
+            last_print_time = curr_time
             send_success = self.send_failable(
                 client, 'Waiting for more players...')
             if (
