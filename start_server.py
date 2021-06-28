@@ -3,6 +3,7 @@ Start a server for remote agent evaluation.
 """
 
 import argparse
+import logging
 
 from hearts_gym import utils
 from hearts_gym.server.hearts_server import (
@@ -92,6 +93,7 @@ def parse_args():
 def main() -> None:
     """Start a server for remote agent evaluation."""
     args = parse_args()
+    logging.basicConfig()
     with HeartsServer(
             (args.server_address, args.port),
             HeartsRequestHandler,
