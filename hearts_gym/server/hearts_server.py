@@ -6,6 +6,7 @@ import logging
 import math
 from multiprocessing.pool import ThreadPool
 import os
+import socket
 from socketserver import BaseRequestHandler, BaseServer, TCPServer
 from threading import Lock, Thread
 import time
@@ -404,7 +405,7 @@ class HeartsServer(TCPServer):
             data = request.recv(max_receive_bytes)
             if data == b'' or data is None:
                 raise ValueError('received empty data')
-        except OSError:
+        except socket.timeout:
             request.settimeout(prev_timeout)
             self.send_failable(client, client_error_msg)
             self.logger.warning(
