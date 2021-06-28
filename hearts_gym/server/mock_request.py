@@ -44,7 +44,7 @@ class MockRequest(socket.socket):
         """Overridden with NOP for API compatibility."""
         pass
 
-    def recv(self, bufsize: int, flags: int = 0) -> bytes:
+    def get_actions(self) -> bytes:
         """Return random legal action for the environments the client
         interacts with.
 
@@ -65,6 +65,9 @@ class MockRequest(socket.socket):
             if env.active_player_index == self._player_index
         ]
         return server_utils.encode_actions(actions)
+
+    def recv(self, bufsize: int, flags: int = 0) -> bytes:
+        return self.get_actions()
 
     def settimeout(self, value: Optional[float]) -> None:
         """Overridden with NOP for API compatibility."""

@@ -1020,7 +1020,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         client = self.server.clients[player_index]
         assert isinstance(client.request, MockRequest), \
             'replacing with bot failed'
-        data = client.request.recv(None)
+        data = client.request.get_action()
         return client, data
 
     def _receive_shard(
