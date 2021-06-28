@@ -73,6 +73,12 @@ def parse_args():
             'Whether clients can connect from the same address more than once.'
         ),
     )
+    parser.add_argument(
+        '--wait_duration_sec',
+        default=None,
+        type=int,
+        help='How long to wait until filling with randomly acting agents.',
+    )
 
     parser.add_argument(
         '--server_address',
@@ -107,6 +113,7 @@ def main() -> None:
             accept_repeating_client_addresses=(
                 args.accept_repeating_client_addresses
             ),
+            wait_duration_sec=args.wait_duration_sec,
     ) as server:
         server.serve_forever()
 

@@ -100,6 +100,7 @@ class HeartsServer(TCPServer):
             num_procs: int = utils.get_num_cpus() - 1,
             max_num_games: Optional[int] = None,
             accept_repeating_client_addresses: bool = True,
+            wait_duration_sec: Optional[int] = None,
             bind_and_activate: bool = True,
     ) -> None:
         """Construct a Hearts server.
@@ -133,6 +134,10 @@ class HeartsServer(TCPServer):
             accept_repeating_client_addresses (bool): Whether clients
                 are allowed to connect multiple times from the same
                 address (only changing the port they connect from).
+            wait_duration_sec (Optional[int]): How long to wait after the
+                first player has connected until the remaining spots are
+                filled with randomly acting agents. If `None`,
+                wait indefinitely.
             bind_and_activate (bool): Whether to automatically bind and
                 activate the server upon construction.
         """
@@ -158,6 +163,7 @@ class HeartsServer(TCPServer):
 
         self._accept_repeating_client_address = \
             accept_repeating_client_addresses
+        self._wait_duration_sec = wait_duration_sec
         self._max_num_clients = num_players
 
         # FIXME Allow setting batch size per client
@@ -856,9 +862,18 @@ class HeartsServer(TCPServer):
         """
         return self._send_failable(client, data, True)
 
+    def fill_remaining(self) -> None:
+        """Fill all remaining free spots with randomly acting agents."""
+        with self._client_change_lock():
+            client_index = self.find_free_index()
+            while client_index is not None:
+                self.register_bot(client_index)
+                client_index = self.find_free_index()
+
     def _wait_for_players(
             self,
             client: Client,
+            is_first_client: bool,
     ) -> None:
         """Let the given client wait until enough clients have connected.
         During the waiting, periodically send messages.
@@ -869,6 +884,8 @@ class HeartsServer(TCPServer):
 
         Args:
             client (Client): Client that waits.
+            is_first_client (bool): Whether this is the first client
+                that connected.
         """
         max_num_clients = self._max_num_clients
         num_clients = len(self.clients)
@@ -893,8 +910,16 @@ class HeartsServer(TCPServer):
                     break
 
             time.sleep(0.1)
-
             curr_time = time.time()
+
+            if (
+                    self._wait_duration_sec is not None
+                    and is_first_client
+                    and curr_time - start_time > self._wait_duration_sec
+            ):
+                self.fill_remaining()
+                break
+
             if curr_time - last_print_time < self.PRINT_INTERVAL_SEC:
                 continue
 
@@ -921,8 +946,11 @@ class HeartsServer(TCPServer):
             client (Client): Client that should wait.
         """
         self.logger.info(f'Starting waiter thread for {client.address}...')
-        thread = Thread(target=self._wait_for_players, args=(client,))
         with self._client_change_lock:
+            thread = Thread(
+                target=self._wait_for_players,
+                args=(client, len(self.clients) == 1),
+            )
             self._waiter_threads[client.player_index] = thread
         thread.start()
         self.logger.info('Thread started.')
@@ -957,7 +985,6 @@ class HeartsServer(TCPServer):
             self._start_waiter_thread(client)
             return
 
-        # FIXME use random agents when waiting for too long or flag given
         self._join_waiters()
 
         # We lost a client while joining threads.
