@@ -995,6 +995,10 @@ class HeartsRequestHandler(BaseRequestHandler):
         self.server: HeartsServer
         self.max_receive_bytes = \
             self.calculate_max_receive_bytes(self.server.num_parallel_games)
+        self._max_shard_receive_bytes = min(
+            self.max_receive_bytes,
+            server_utils.MAX_RECEIVE_BYTES,
+        )
         self.max_prefix_len = (
             len(str(self.max_receive_bytes))
             + len(server_utils.MSG_LENGTH_SEPARATOR)
@@ -1043,7 +1047,7 @@ class HeartsRequestHandler(BaseRequestHandler):
             bool: Whether the message was received without an error.
         """
         try:
-            data = client.request.recv(self.max_receive_bytes)
+            data = client.request.recv(self._max_shard_receive_bytes)
         except Exception:
             self.server.logger.warning(f'Lost client {client.address}.')
             client, data = self._replace_with_bot(player_index)
