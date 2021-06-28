@@ -4,7 +4,7 @@ additional speed.
 """
 
 from multiprocessing.pool import ThreadPool
-from typing import Any, Callable, Iterable, Iterator, List, Tuple
+from typing import Any, Iterator, List, Tuple
 
 from hearts_gym.envs.hearts_env import (
     Action,
@@ -15,36 +15,7 @@ from hearts_gym.envs.hearts_env import (
     MultiReward,
 )
 from hearts_gym import utils
-
-
-class MockPool(ThreadPool):
-    def __init__(self) -> None:
-        """Overridden with NOP for API compatibility."""
-        pass
-
-    def __del__(self) -> None:
-        """Overridden with NOP for API compatibility."""
-        pass
-
-    def terminate(self) -> None:
-        """Overridden with NOP for API compatibility."""
-        pass
-
-    def map(
-            self,
-            func: Callable,
-            iterable: Iterable,
-            chunksize: int = None,
-    ) -> List:
-        return [func(elem) for elem in iterable]
-
-    def starmap(
-            self,
-            func: Callable,
-            iterable: Iterable,
-            chunksize: int = None,
-    ) -> List:
-        return [func(*elems) for elems in iterable]
+from hearts_gym.utils.mock_pool import MockPool
 
 
 class VecHeartsEnv(HeartsEnv):
