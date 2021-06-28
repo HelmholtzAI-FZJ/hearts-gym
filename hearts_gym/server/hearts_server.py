@@ -290,6 +290,7 @@ class HeartsServer(TCPServer):
             self,
             request: Request,
             client_address: Address,
+            player_index: Optional[int] = None,
     ) -> Optional[Client]:
         """Register the given client and return it if successful.
         Otherwise, return `None`.
@@ -297,6 +298,8 @@ class HeartsServer(TCPServer):
         Args:
             request (Request): Socket/request of the client.
             client_address (Address): Address of the client.
+            player_index (Optional[int]): Index to register the player
+                at; if `None`, take first free one.
 
         Returns:
             Optional[Client]: The registered client or `None`.
@@ -314,10 +317,11 @@ class HeartsServer(TCPServer):
             ):
                 return None
 
-            free_index = self.find_free_index()
+            if player_index is None:
+                player_index = self.find_free_index()
 
-            client = Client(free_index, request, client_address)
-            self.clients[free_index] = client
+            client = Client(player_index, request, client_address)
+            self.clients[player_index] = client
             return client
 
     def register_bot(
@@ -343,6 +347,7 @@ class HeartsServer(TCPServer):
                 seed=seeding.hash_seed(),
             ),
             ('mock-client', client_index),
+            client_index,
         )
 
         if client is not None:
