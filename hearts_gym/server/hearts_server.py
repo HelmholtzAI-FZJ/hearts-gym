@@ -402,6 +402,8 @@ class HeartsServer(TCPServer):
 
         try:
             data = request.recv(max_receive_bytes)
+            if data == b'' or data is None:
+                raise ValueError('received empty data')
         except OSError:
             request.settimeout(prev_timeout)
             self.send_failable(client, client_error_msg)
@@ -1055,6 +1057,8 @@ class HeartsRequestHandler(BaseRequestHandler):
         """
         try:
             data = client.request.recv(self._max_shard_receive_bytes)
+            if data == b'' or data is None:
+                raise ValueError('received empty data')
         except Exception:
             self.server.logger.warning(f'Lost client {client.address}.')
             client, data = self._replace_with_bot(player_index)
