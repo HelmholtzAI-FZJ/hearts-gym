@@ -270,11 +270,20 @@ class HeartsServer(TCPServer):
         self.logger.info('Accepted.')
         return True
 
-    def find_free_index(self):
+    def find_free_index(self) -> Optional[int]:
+        """Return the first free index or `None` if the maximum number
+        of players has already been reached.
+
+        Returns:
+            Optional[int]: First free index or `None` if there is none.
+        """
         return next(
-            i
-            for i in range(self._max_num_clients)
-            if i not in self.clients
+            (
+                i
+                for i in range(self._max_num_clients)
+                if i not in self.clients
+            ),
+            None,
         )
 
     def register_client(
