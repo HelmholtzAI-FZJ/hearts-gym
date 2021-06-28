@@ -1040,7 +1040,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         Returns:
             Client: The original client or its replacement.
             bytes: The message or a default if there was an error.
-            bool: Whether there was an error.
+            bool: Whether the message was received without an error.
         """
         try:
             data = client.request.recv(self.max_receive_bytes)
