@@ -1591,6 +1591,7 @@ class HeartsRequestHandler(BaseRequestHandler):
             )
 
     def finish(self) -> None:
+        self.server.print_log('Finishing...')
         self._communicators.terminate()
         self._communicators.join()
         self.server.envs.terminate_pool()
@@ -1604,3 +1605,4 @@ class HeartsRequestHandler(BaseRequestHandler):
 
         clients.clear()
 
+        self.server.print_log('Done.')
