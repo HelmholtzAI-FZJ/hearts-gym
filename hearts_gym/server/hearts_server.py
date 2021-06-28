@@ -1177,6 +1177,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                     f'length. Closing connection...'
                 )
                 client, data_shard = self._replace_with_bot(player_index)
+                successful = False
 
             if not successful:
                 data_shard = data_shard.partition(
