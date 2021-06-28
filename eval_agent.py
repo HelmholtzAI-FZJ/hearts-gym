@@ -19,11 +19,13 @@ from hearts_gym.server import utils as server_utils
 from hearts_gym.server.hearts_server import (
     Client,
     HeartsRequestHandler,
+    HeartsServer,
     SERVER_ADDRESS,
     PORT,
 )
 from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
+SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 5
 ENV_NAME = 'Hearts-v0'
 LEARNED_POLICY_ID = 'learned'
 
@@ -283,6 +285,7 @@ def main() -> None:
 
     with server_utils.create_client() as client:
         client.connect((args.server_address, args.port))
+        client.settimeout(SERVER_TIMEOUT_SEC)
         print('Connected to server.')
         server_utils.send_name(client, name)
 
