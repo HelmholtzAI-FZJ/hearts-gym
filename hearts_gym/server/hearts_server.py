@@ -339,6 +339,13 @@ class HeartsServer(TCPServer):
             self.logger.info(f'Registered bot at index {client_index}.')
         return client
 
+    def shutdown_request(  # type: ignore[override]
+            request: Union[Request, MockRequest],
+    ) -> None:
+        if isinstance(request, MockRequest):
+            return
+        super().shutdown_request(request)
+
     def unregister_client(
             self,
             client: Client,
