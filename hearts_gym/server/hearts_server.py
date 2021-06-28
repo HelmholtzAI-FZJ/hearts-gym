@@ -1550,12 +1550,12 @@ class HeartsRequestHandler(BaseRequestHandler):
             self._communicators.map(
                 lambda client: self.server.send_failable_replacing(
                     client, return_data),
-                clients.values(),
+                (clients[i] for i in range(num_players)),
             )
             self._communicators.map(
                 lambda client: self.server.receive_ok_replacing(
                     client, self.OK_TIMEOUT_SEC),
-                clients.values(),
+                (clients[i] for i in range(num_players)),
             )
 
     def finish(self) -> None:
