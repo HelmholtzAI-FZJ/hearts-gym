@@ -364,6 +364,7 @@ class HeartsServer(TCPServer):
         return client
 
     def shutdown_request(  # type: ignore[override]
+            self,
             request: Union[Request, MockRequest],
     ) -> None:
         if isinstance(request, MockRequest):
@@ -867,7 +868,7 @@ class HeartsServer(TCPServer):
 
     def fill_remaining(self) -> None:
         """Fill all remaining free spots with randomly acting agents."""
-        with self._client_change_lock():
+        with self._client_change_lock:
             client_index = self.find_free_index()
             while client_index is not None:
                 self.register_bot(client_index)
@@ -1080,7 +1081,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         client = self.server.clients[player_index]
         assert isinstance(client.request, MockRequest), \
             'replacing with bot failed'
-        data = client.request.get_action()
+        data = client.request.get_actions()
         return client, data
 
     def _receive_shard(
