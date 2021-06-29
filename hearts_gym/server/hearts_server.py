@@ -325,6 +325,7 @@ class HeartsServer(TCPServer):
 
             if player_index is None:
                 player_index = self.find_free_index()
+            assert player_index is not None
 
             client = Client(player_index, request, client_address)
             self.clients[player_index] = client
@@ -346,6 +347,8 @@ class HeartsServer(TCPServer):
         """
         if client_index is None:
             client_index = self.find_free_index()
+        assert client_index is not None
+
         client = self.register_client(
             MockRequest(
                 self.envs.get_envs(),
@@ -365,7 +368,7 @@ class HeartsServer(TCPServer):
     ) -> None:
         if isinstance(request, MockRequest):
             return
-        super().shutdown_request(request)
+        super().shutdown_request(request)  # type: ignore[misc]
 
     def unregister_client(
             self,
