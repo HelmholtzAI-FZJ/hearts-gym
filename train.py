@@ -16,6 +16,7 @@ from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
 LEARNED_AGENT_ID = 0
 """Agent ID of the learned policy."""
+LEARNED_POLICY_ID = 'learned'
 
 # FIXME argument parsing
 
@@ -31,7 +32,7 @@ def policy_mapping_one_learned_rest_random(agent_id: AgentId) -> PolicyID:
         PolicyID: ID of the policy for the queried agent.
     """
     if agent_id == LEARNED_AGENT_ID:
-        return 'learned'
+        return LEARNED_POLICY_ID
     return 'random'
 
 
@@ -41,7 +42,7 @@ def policy_mapping_all_learned(_) -> PolicyID:
     Returns:
         PolicyID: A learned policy.
     """
-    return 'learned'
+    return LEARNED_POLICY_ID
 
 
 def policy_mapping_all_random(_) -> PolicyID:
@@ -223,9 +224,9 @@ def main() -> None:
         'env_config': env_config,
         'model': model_config,
         'multiagent': {
-            'policies_to_train': ['learned'],
+            'policies_to_train': [LEARNED_POLICY_ID],
             'policies': {
-                'learned': (None, obs_space, act_space, {}),
+                LEARNED_POLICY_ID: (None, obs_space, act_space, {}),
                 'random': (RandomPolicy, obs_space, act_space,
                            {'mask_actions': mask_actions}),
                 'rulebased': (RuleBasedPolicy, obs_space, act_space,
@@ -248,7 +249,7 @@ def main() -> None:
             eval_policy_mapping_fn != policy_mapping_all_random
             and eval_policy_mapping_fn != policy_mapping_all_rulebased
     ):
-        assert eval_policy_mapping_fn(LEARNED_AGENT_ID) == 'learned', \
+        assert eval_policy_mapping_fn(LEARNED_AGENT_ID) == LEARNED_POLICY_ID, \
             'agent index does not match policy with name "learned"'
     else:
         print('Warning: you are not evaluating a learned policy; '
