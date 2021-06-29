@@ -77,7 +77,7 @@ Miniconda.
 After installing Miniconda, execute the following:
 
 ```shell
-conda create -n hearts-gym python==3.8 zlib
+conda create -n hearts-gym python=3.8 zlib
 conda activate hearts-gym
 ```
 
