@@ -7,10 +7,11 @@ from typing import Any, Callable, List
 
 import ray
 from ray import tune
-from ray.rllib.utils.typing import PolicyID
+from ray.rllib.utils.typing import PolicyID, TrainerConfigDict
 
 import hearts_gym
 from hearts_gym import utils
+from hearts_gym.envs.card_deck import Seed
 from hearts_gym.envs.hearts_env import AgentId
 from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
@@ -61,6 +62,55 @@ def policy_mapping_all_rulebased(_) -> PolicyID:
         PolicyID: A policy acting with hardcoded rules.
     """
     return 'rulebased'
+
+
+def configure_eval(
+        config: TrainerConfigDict,
+        seed: Seed,
+        policy_mapping_fn: Callable[[AgentId], PolicyID],
+        reset_workers: bool,
+) -> TrainerConfigDict:
+    """Return the given configuration modified so it has settings useful
+    for evaluation.
+
+    Args:
+        config (TrainerConfigDict): RLlib configuration to set up
+            for evaluation.
+        seed (Seed): Random number generator base seed for evaluation.
+        policy_mapping_fn (Callable[[AgentId], PolicyID]): Policy
+            mapping for evaluation.
+        reset_workers (bool): Whether workers were reset and can be used
+            for evaluation.
+
+    Returns:
+        TrainerConfigDict: Evaluation configuration based on the
+            given one.
+    """
+    eval_config = utils.configure_eval(config)
+
+    env_config = eval_config.get('env', {}).copy()
+    eval_config['env'] = env_config
+    env_config['seed'] = seed
+
+    eval_config['policy_mapping_fn'] = policy_mapping_fn
+    eval_config['num_gpus'] = (
+        utils.get_num_gpus(eval_config.get('framework', 'tf'))
+        if reset_workers
+        else 0
+    )
+    eval_config['num_workers'] = (
+        utils.get_num_cpus() - 1
+        if reset_workers
+        else 0
+    )
+
+    # These settings did not play nice with the stable
+    # evaluation method.
+    # eval_config['evaluation_num_workers'] = utils.get_num_cpus() - 1
+    # eval_config['evaluation_num_episodes'] = 1
+    # eval_config['evaluation_config'] = env_config
+
+    return eval_config
 
 
 def _strlen(x: Any) -> int:
@@ -291,26 +341,12 @@ def main() -> None:
         hearts_gym.register_envs()
         utils.maybe_set_up_masked_actions_model(algorithm, config)
 
-    eval_config = {
-        **config,
-        'explore': False,
-        'env_config': {**env_config, 'seed': eval_seed},
-        'multiagent': {
-            **config['multiagent'],  # type: ignore[call-overload]
-            'policy_mapping_fn': eval_policy_mapping_fn,
-            'policies_to_train': [],
-        },
-        'num_gpus': utils.get_num_gpus(framework) if reset_workers else 0,
-        'num_workers': utils.get_num_cpus() - 1 if reset_workers else 0,
-
-        # These settings did not play nice with the stable
-        # evaluation method.
-        # 'evaluation_num_workers': utils.get_num_cpus() - 1,
-        # 'evaluation_num_episodes': 1,
-        # 'evaluation_config': {
-        #     'env_config': {**env_config, 'seed': eval_seed},
-        # },
-    }
+    eval_config = configure_eval(
+        config,
+        eval_seed,
+        eval_policy_mapping_fn,
+        reset_workers,
+    )
     agent = utils.load_agent(algorithm, best_cp, eval_config)
 
     (

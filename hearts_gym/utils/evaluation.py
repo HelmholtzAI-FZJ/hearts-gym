@@ -34,6 +34,7 @@ import hearts_gym.utils.common as utils
 
 __all__ = [
     'EvalResults',
+    'configure_eval',
     'get_initial_state',
     'get_initial_states',
     'compute_actions',
@@ -41,6 +42,34 @@ __all__ = [
 ]
 
 EvalResults = Tuple[List[int], List[List[int]], int, int, float]
+
+
+def configure_eval(
+        config: TrainerConfigDict,
+) -> TrainerConfigDict:
+    """Return the given configuration modified so it has settings useful
+    for evaluation.
+
+    The returned dictionary is a copy, but not a deepcopy, of the given
+    dictionary. While this method guarantees `config` is not modified,
+    be careful about further modifications.
+
+    Args:
+        config (TrainerConfigDict): RLlib configuration to set up
+            for evaluation.
+
+    Returns:
+        TrainerConfigDict: Evaluation configuration based on the
+            given one.
+    """
+    eval_config = config.copy()
+    eval_config['explore'] = False
+
+    multiagent_config = eval_config.get('multiagent', {}).copy()
+    eval_config['multiagent'] = multiagent_config
+    multiagent_config['policies_to_train'] = []
+
+    return eval_config
 
 
 def get_initial_state(

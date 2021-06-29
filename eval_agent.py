@@ -78,6 +78,28 @@ def parse_args() -> Namespace:
     return parser.parse_args()
 
 
+def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
+    """Return the given configuration modified so it has settings useful
+    for remote evaluation.
+
+    Args:
+        config (TrainerConfigDict): RLlib configuration to set up
+            for evaluation.
+
+    Returns:
+        TrainerConfigDict: Evaluation configuration based on the
+            given one.
+    """
+    eval_config = utils.configure_eval(config)
+    eval_config['num_workers'] = 0
+
+    multiagent_config = eval_config.get('multiagent', {}).copy()
+    eval_config['multiagent'] = multiagent_config
+    multiagent_config['policy_mapping_fn'] = lambda _: LEARNED_POLICY_ID
+
+    return eval_config
+
+
 def _is_done(num_games: int, max_num_games: Optional[int]) -> bool:
     """Return whether the desired number of games have been played..
 
@@ -323,9 +345,7 @@ def main() -> None:
             'env': ENV_NAME,
             'env_config': env_config,
             'model': model_config,
-            'explore': False,
             'multiagent': {
-                'policies_to_train': [],
                 'policies': {
                     LEARNED_POLICY_ID: (None, obs_space, act_space, {}),
                     'random': (RandomPolicy, obs_space, act_space,
@@ -333,12 +353,11 @@ def main() -> None:
                     'rulebased': (RuleBasedPolicy, obs_space, act_space,
                                   {'mask_actions': mask_actions}),
                 },
-                'policy_mapping_fn': lambda _: LEARNED_POLICY_ID,
             },
             'num_gpus': utils.get_num_gpus(args.framework),
-            'num_workers': 0,
             'framework': args.framework,
         }
+        config = configure_remote_eval(config)
         utils.maybe_set_up_masked_actions_model(algorithm, config)
 
         agent = utils.load_agent(algorithm, str(checkpoint_path), config)
