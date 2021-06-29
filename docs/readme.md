@@ -236,6 +236,11 @@ This is completely optional and not required in any way to work on the
 code. Whether you want to use type hints and type checking is entirely
 up to your preference.
 
+#### Debugging
+
+For less clutter and an easier debugging setup, set the `num_gpus` and
+`num_workers` configuration values to 0.
+
 ## Miscellaneous Information
 
 ### Supported Algorithms
