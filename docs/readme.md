@@ -110,8 +110,10 @@ same penalty score get the highest of their rankings.
 
 In `train.py`, you will find lots of [configuration options which are
 described here](#configuration). Results including configuration and
-checkpoints are saved in the `results` directory by default. After
-training, your agent is automatically evaluated as well.
+checkpoints are saved in the `results` directory by default (you can
+list directories containing checkpoints with `python
+show_checkpoint_dirs.py`). After training, your agent is automatically
+evaluated as well.
 
 To optimize your agent, the main thing you want to modify is the
 `hearts_gym.RewardFunction.compute_reward` method in
@@ -249,9 +251,10 @@ Remember, this behavior only occurs when action masking is enabled!
 ### Sharing Checkpoints
 
 To share a checkpoint, you need the whole directory containing the
-checkpoint file. In addition, you may want to share the `params.pkl`
-file next to the directory containing the checkpoint to share its
-configuration as well.
+checkpoint file (as listed by `python show_checkpoint_dirs.py`). In
+addition, you may want to share the `params.pkl` file next to the
+directory containing the checkpoint to share its configuration as
+well.
 
 ### Monitoring Training with TensorBoard
 
