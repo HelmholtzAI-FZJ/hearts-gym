@@ -92,7 +92,10 @@ def configure_eval(
     eval_config['env_config'] = env_config
     env_config['seed'] = seed
 
-    eval_config['policy_mapping_fn'] = policy_mapping_fn
+    multiagent_config = eval_config.get('multiagent', {}).copy()
+    multiagent_config['multiagent'] = multiagent_config
+    multiagent_config['policy_mapping_fn'] = policy_mapping_fn
+
     eval_config['num_gpus'] = (
         utils.get_num_gpus(eval_config.get('framework', 'tf'))
         if reset_workers
