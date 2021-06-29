@@ -1,8 +1,9 @@
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from ray import tune
 
 from hearts_gym import utils
+from hearts_gym.utils.obs_transforms import ObsTransform
 
 assert utils.DEFAULT_FRAMEWORK is not None
 
@@ -35,6 +36,8 @@ custom_rulebased_policies: Dict[str, type] = {}
 Mapping from policy IDs to classes (not class instances!) implementing
 `hearts_gym.policies.deterministic_policy_impl.DeterministicPolicyImpl`.
 """
+
+obs_transforms: List[ObsTransform] = []
 
 
 # Environment config
@@ -100,6 +103,7 @@ env_config = {
     'deck_size': deck_size,
     'seed': seed,
     'mask_actions': mask_actions,
+    'obs_transforms': obs_transforms,
 }
 
 model_config = {
