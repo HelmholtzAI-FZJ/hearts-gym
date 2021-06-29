@@ -27,8 +27,7 @@ class RewardFunction:
             self,
             player_index: int,
             prev_active_player_index: int,
-            trick_winner_index: Optional[int],
-            trick_penalty: Optional[int],
+            trick_is_over: bool,
     ) -> Reward:
         """Return the reward for the player with the given index.
 
@@ -46,11 +45,7 @@ class RewardFunction:
             prev_active_player_index (int): Index of the previously
                 active player that took the action. In other words, the
                 active player index before the action was taken.
-            trick_winner_index (Optional[int]): Index of the player that
-                won the trick or `None` if it is still ongoing.
-            trick_penalty (Optional[int]): Penalty score of the cards
-                obtained by the player that won the trick or `None` if
-                it is still ongoing.
+            trick_is_over (bool): Whether the action ended the trick.
 
         Returns:
             Reward: Reward for the player with the given index.
@@ -65,10 +60,7 @@ class RewardFunction:
             # to provide.
             return 0
 
-        if (
-                trick_winner_index is not None
-                and self.game.has_shot_the_moon(player_index)
-        ):
+        if trick_is_over and self.game.has_shot_the_moon(player_index):
             return self.game.max_penalty * self.game.max_num_cards_on_hand
 
         # penalty = self.game.penalties[player_index]
