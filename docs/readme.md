@@ -37,6 +37,8 @@ python3 -m venv --system-site-packages ./env
 source ./env/bin/activate
 # On Windows:
 .\env\Scripts\activate
+
+# Do not use `python3` from this point onward!
 ```
 
 Install at least one of
