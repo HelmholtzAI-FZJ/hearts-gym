@@ -2,8 +2,6 @@
 The reward function an agent optimizes to win at Hearts.
 """
 
-from typing import Optional
-
 import numpy as np
 
 from .hearts_env import HeartsEnv, Reward
