@@ -246,6 +246,13 @@ Attention function, respectively.
 
 Remember, this behavior only occurs when action masking is enabled!
 
+### Sharing Checkpoints
+
+To share a checkpoint, you need the whole directory containing the
+checkpoint file. In addition, you may want to share the `params.pkl`
+file next to the directory containing the checkpoint to share its
+configuration as well.
+
 ### Monitoring Training with TensorBoard
 
 RLlib automatically creates
