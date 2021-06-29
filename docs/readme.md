@@ -246,6 +246,20 @@ Attention function, respectively.
 
 Remember, this behavior only occurs when action masking is enabled!
 
+### Monitoring Training with TensorBoard
+
+RLlib automatically creates
+[TensorBoard](https://www.tensorflow.org/tensorboard) summaries,
+allowing you to monitor statistics of your models during (or after)
+training. Start it with the following line:
+
+```shell
+tensorboard --logdir results
+```
+
+Note that usage of this is completely optional; TensorBoard is not an
+installation requirement.
+
 ## References
 
 - General:
