@@ -24,8 +24,14 @@ python -m pydoc hearts_gym.envs.hearts_game.HeartsGame
 ## Installing
 
 Supported Python versions are shown in `setup.py` under the
-`python_requires` argument. Clone this repository so you can easily
-modify it, replacing `<repo-uri>` with the URI of this repo.
+`python_requires` argument. If your system does not have the correct
+version (it will complain at some point during the installation), you
+can [use the Conda installation instructions](#conda-installation).
+
+### Environment Setup
+
+Clone this repository so you can easily modify it, replacing
+`<repo-uri>` with the URI of this repo.
 
 ```shell
 git clone <repo-uri>
@@ -40,6 +46,8 @@ source ./env/bin/activate
 
 # Do not use `python3` from this point onward!
 ```
+
+### Installing Requirements
 
 Install at least one of
 [PyTorch](https://pytorch.org/get-started/locally/) or
@@ -56,16 +64,40 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
+You are done! [Head over to the usage section](#usage).
+
+### Conda Installation
+
+To install a Python version different from your system's, provided are
+instructions for
+[Miniconda](https://docs.conda.io/en/latest/miniconda.html). If you
+already have the `conda` command available, you do not need to install
+Miniconda.
+
+After installing Miniconda, execute the following:
+
+```shell
+conda create -n hearts-gym python==3.8 zlib
+conda activate hearts-gym
+```
+
+You now have a Conda environment for development. However, you still
+need to [install the requirements](#installing-requirements).
+
 ## Usage
 
-You will need to execute the following line each time you start a new
-shell. This will activate the Python virtual environment we are using:
+You will need to execute one of the following lines each time you
+start a new shell. This will activate the Python virtual environment
+we are using:
 
 ```shell
 # On Unix:
 source ./env/bin/activate
 # On Windows:
 .\env\Scripts\activate
+
+# If using Conda installation:
+conda activate hearts-gym
 ```
 
 ### Training
