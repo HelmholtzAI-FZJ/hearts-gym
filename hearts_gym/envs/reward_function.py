@@ -41,7 +41,7 @@ class RewardFunction:
         Args:
             player_index (int): Index of the player to return the reward
                 for. This is most of the time _not_ the player that took
-                the action.
+                the action (which is given by `prev_active_player_index`).
             prev_active_player_index (int): Index of the previously
                 active player that took the action. In other words, the
                 active player index before the action was taken.
