@@ -88,8 +88,8 @@ def configure_eval(
     """
     eval_config = utils.configure_eval(config)
 
-    env_config = eval_config.get('env', {}).copy()
-    eval_config['env'] = env_config
+    env_config = eval_config.get('env_config', {}).copy()
+    eval_config['env_config'] = env_config
     env_config['seed'] = seed
 
     eval_config['policy_mapping_fn'] = policy_mapping_fn
