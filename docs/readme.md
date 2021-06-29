@@ -260,6 +260,18 @@ tensorboard --logdir results
 Note that usage of this is completely optional; TensorBoard is not an
 installation requirement.
 
+### Security
+
+Be default, the `eval_agent.py` script automatically loads parameters
+used for model training from a `pickle` file so the script does not
+have to be re-configured for each checkpoint. If you obtain
+checkpoints that include a `params.pkl` file from an untrusted source
+and load them, arbitrary code may be executed.
+
+To avoid this security issue, set `ALLOW_PICKLES = False` in
+`eval_agent.py`. Note that you then have to configure `eval_agent.py`
+for each checkpoint so the configuration matches.
+
 ## References
 
 - General:

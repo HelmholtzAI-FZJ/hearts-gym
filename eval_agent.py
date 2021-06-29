@@ -5,13 +5,15 @@ Evaluate a local agent on a remote server.
 from argparse import ArgumentParser, Namespace
 from json import JSONDecodeError
 from pathlib import Path
+import pickle
 import socket
 import sys
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import zlib
 
 import ray
-from ray.rllib.utils.typing import TensorType
+from ray.rllib.utils.typing import TensorType, TrainerConfigDict
+from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 
 from hearts_gym import utils
 from hearts_gym.envs.hearts_env import Reward
@@ -24,6 +26,14 @@ from hearts_gym.server.hearts_server import (
     PORT,
 )
 from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
+
+ALLOW_PICKLES = True
+"""Whether to allow loading parameter pickle files.
+
+When set to `True`, this is a security hole when receiving untrusted
+checkpoints due to arbitrary code execution. Trade-off between safety
+and convenience.
+"""
 
 SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 5
 ENV_NAME = 'Hearts-v0'
@@ -76,6 +86,34 @@ def parse_args() -> Namespace:
     )
 
     return parser.parse_args()
+
+
+def _assert_same_envs(
+        config: TrainerConfigDict,
+        server_metadata: Dict[str, Any],
+) -> None:
+    """Raise an error when the environment configuration in the given
+    configuration does not match the one from the server.
+
+    Args:
+        config (TrainerConfigDict): Local configuration.
+        server_metadata (Dict[str, Any]): Server configuration metadata.
+    """
+    load_env_name = config.get('env', None)
+    assert load_env_name == ENV_NAME, (
+        f'loaded agent was trained on different environment '
+        f'({load_env_name}); please change `ENV_NAME` if this is fine'
+    )
+
+    env_config = config.get('env_config', {})
+    for attr in ['num_players', 'deck_size', 'mask_actions']:
+        load_attr = env_config.get(attr, None)
+        server_attr = server_metadata[attr]
+        assert load_attr == server_attr, (
+            f'environment model was trained on does not match server '
+            f'environment: {attr} does not match '
+            f'({load_attr} != {server_attr})'
+        )
 
 
 def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
@@ -302,6 +340,8 @@ def main() -> None:
     checkpoint_path = Path(args.checkpoint_path)
     assert not checkpoint_path.is_dir(), \
         'please pass the checkpoint file, not its directory'
+    params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
+    has_params = params_path.is_file()
 
     ray.init()
 
@@ -330,33 +370,48 @@ def main() -> None:
         # We only get strings as keys.
         str_player_index = str(player_index)
 
-        env_config = {
-            'num_players': num_players,
-            'deck_size': deck_size,
-            'mask_actions': mask_actions,
-        }
-        obs_space, act_space = utils.get_spaces(ENV_NAME, env_config)
+        if ALLOW_PICKLES and has_params:
+            with open(params_path, 'rb') as params_file:
+                config = pickle.load(params_file)
 
-        model_config = {
-            'use_lstm': False,
-        }
+            assert (
+                LEARNED_POLICY_ID
+                in config.get('multiagent', {}).get('policies', {})
+            ), (
+                'cannot find learned policy ID in loaded configuration; '
+                'please configure `LEARNED_POLICY_ID`'
+            )
+            _assert_same_envs(config, metadata)
+            print('Loaded configuration for checkpoint; '
+                  'to disable, set `ALLOW_PICKLES = False`.')
+        else:
+            env_config = {
+                'num_players': num_players,
+                'deck_size': deck_size,
+                'mask_actions': mask_actions,
+            }
+            obs_space, act_space = utils.get_spaces(ENV_NAME, env_config)
 
-        config = {
-            'env': ENV_NAME,
-            'env_config': env_config,
-            'model': model_config,
-            'multiagent': {
-                'policies': {
-                    LEARNED_POLICY_ID: (None, obs_space, act_space, {}),
-                    'random': (RandomPolicy, obs_space, act_space,
-                               {'mask_actions': mask_actions}),
-                    'rulebased': (RuleBasedPolicy, obs_space, act_space,
-                                  {'mask_actions': mask_actions}),
+            model_config = {
+                'use_lstm': False,
+            }
+
+            config = {
+                'env': ENV_NAME,
+                'env_config': env_config,
+                'model': model_config,
+                'multiagent': {
+                    'policies': {
+                        LEARNED_POLICY_ID: (None, obs_space, act_space, {}),
+                        'random': (RandomPolicy, obs_space, act_space,
+                                   {'mask_actions': mask_actions}),
+                        'rulebased': (RuleBasedPolicy, obs_space, act_space,
+                                      {'mask_actions': mask_actions}),
+                    },
                 },
-            },
-            'num_gpus': utils.get_num_gpus(args.framework),
-            'framework': args.framework,
-        }
+                'num_gpus': utils.get_num_gpus(args.framework),
+                'framework': args.framework,
+            }
         config = configure_remote_eval(config)
         utils.maybe_set_up_masked_actions_model(algorithm, config)
 
