@@ -340,6 +340,7 @@ def main() -> None:
     checkpoint_path = Path(args.checkpoint_path)
     assert not checkpoint_path.is_dir(), \
         'please pass the checkpoint file, not its directory'
+    checkpoint_path.resolve(True)
     params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
     has_params = params_path.is_file()
 
