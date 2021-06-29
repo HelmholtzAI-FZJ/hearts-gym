@@ -18,19 +18,14 @@ What follows is a list of useful attributes accesible to the
 `RewardFunction` that will help for reward shaping. In the list,
 `self` refers to the `RewardFunction` instance.
 
-Please see the respective documentation for a detailed description, of
-each of these, replacing `<attr>` with the attribute you are
-interested in:
+Please see the respective docstrings for a detailed description of
+each of these. Docstrings for variables are triple-quoted strings
+_below_ them.
 
-```shell
-# For attributes beginning with `self.env`
-# (remove the `self.env.` part):
-python -m pydoc hearts_gym.envs.hearts_env.HeartsEnv.<attr>
-
-# For attributes beginning with `self.game`
-# (remove the `self.game.` part):
-python -m pydoc hearts_gym.envs.hearts_game.HeartsGame.<attr>
-```
+- Find attributes beginning with `self.env` in the file
+  `hearts_gym/envs/hearts_env.py` under `HeartsEnv`.
+- Find attributes beginning with `self.game` in the file
+  `hearts_gym/envs/hearts_game.py` under `HeartsGame`.
 
 | Attribute                               | Summary                                                                |
 |-----------------------------------------|------------------------------------------------------------------------|
