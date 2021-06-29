@@ -68,8 +68,8 @@ You are done! [Head over to the usage section](#usage).
 
 ### Conda Installation
 
-To install a Python version different from your system's, provided are
-instructions for
+To install a Python version different from your system's, below you
+can find instructions for
 [Miniconda](https://docs.conda.io/en/latest/miniconda.html). If you
 already have the `conda` command available, you do not need to install
 Miniconda.
