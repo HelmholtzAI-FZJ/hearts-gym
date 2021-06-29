@@ -50,7 +50,7 @@ After installing a deep learning framework, in the root directory of
 the repository clone, execute:
 
 ```shell
-python -m pip install --user --upgrade pip
+python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
