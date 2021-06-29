@@ -2,7 +2,8 @@ from setuptools import setup
 
 setup(
     name='hearts_gym',
-    python_requires='>=3.6<3.9',  # RLlib wheels only go up to 3.8
+    # RLlib wheels built up to and including 3.8
+    python_requires='>=3.6<3.9',
     version='0.0.1',
     install_requires=[
         'gym>=0.18.0',
