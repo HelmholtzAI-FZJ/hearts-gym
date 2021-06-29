@@ -47,12 +47,12 @@ class MockPool(ThreadPool):
         """Overridden with NOP for API compatibility."""
         pass
 
-    def map_async(
+    def map_async(  # type: ignore[override]
             self,
             func: Callable,
             iterable: Iterable,
             chunksize: int = None,
-    ) -> List:
+    ) -> MockResult:
         return MockResult([func(elem) for elem in iterable])
 
     def map(
@@ -63,12 +63,12 @@ class MockPool(ThreadPool):
     ) -> List:
         return self.map_async(func, iterable, chunksize).get()
 
-    def starmap_async(
+    def starmap_async(  # type: ignore[override]
             self,
             func: Callable,
             iterable: Iterable,
             chunksize: int = None,
-    ) -> List:
+    ) -> MockResult:
         return MockResult([func(*elems) for elems in iterable])
 
     def starmap(
