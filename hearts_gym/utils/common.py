@@ -276,7 +276,10 @@ def _adjust_other_config_for_action_masking(
     ModelCatalog._validate_config(config=model_config, framework=framework)
 
     prev_custom_model = model_config.get('custom_model', None)
-    if prev_custom_model.startswith(MASKED_ACTIONS_MODEL_KEY):
+    if (
+            isinstance(prev_custom_model, str)
+            and prev_custom_model.startswith(MASKED_ACTIONS_MODEL_KEY)
+    ):
         # We already configured this.
         return
 
