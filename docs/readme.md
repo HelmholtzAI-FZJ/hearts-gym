@@ -144,10 +144,11 @@ same penalty score get the highest of their rankings.
 
 In `train.py`, you will find lots of [configuration options which are
 described here](#configuration). Results including configuration and
-checkpoints are saved in the `results` directory by default (you can
+checkpoints are saved in the `results` directory by default. You can
 list directories containing checkpoints with `python
-show_checkpoint_dirs.py`). After training, your agent is automatically
-evaluated as well.
+show_checkpoint_dirs.py`. [When you want to share your checkpoints,
+check out the corresponding section.](#sharing-checkpoints) After
+training, your agent is automatically evaluated as well.
 
 To optimize your agent, the main thing you want to modify is the
 `hearts_gym.RewardFunction.compute_reward` method in
@@ -186,7 +187,10 @@ Replace `<name>` with a name you want to have displayed,
 `<checkpoint_path>` with the path to a checkpoint, `<algo>` with the
 name of the algorithm you used for training the agent, and
 `<framework>` with the configuration string of the framework you used
-to train it. Here is an example:
+to train it. The rest of the configuration is loaded from the
+`params.pkl` file next to the checkpoint's directory; if that file is
+missing, you have to configure `eval_agent.py` according to the
+checkpoint you are loading. Here is an example:
 
 ```shell
 python eval_agent.py results/PPO/PPO_Hearts-v0_00000_00000_0_1970-01-01_00-00-00/checkpoint_000002/checkpoint-2 \
