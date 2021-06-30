@@ -142,7 +142,8 @@ the accumulated penalty over all test games for each player. As you
 can see from this example with a single test game, players with the
 same penalty score get the highest of their rankings.
 
-In `train.py`, you will find lots of [configuration options which are
+A central role in `train.py` is played by the file `configuration.py`.
+`configuration.py` contains [lots of configuration options which are
 described here](#configuration). Results including configuration and
 checkpoints are saved in the `results` directory by default. You can
 list directories containing checkpoints with `python
@@ -179,22 +180,19 @@ python start_server.py --num_parallel_games 16
 To connect to the server for evaluation, execute the following:
 
 ```shell
-python eval_agent.py <checkpoint_path> \
-    --name <name> --algorithm <algo> --framework <framework>
+python eval_agent.py --name <name> --algorithm <algo> <checkpoint_path>
 ```
 
-Replace `<name>` with a name you want to have displayed,
-`<checkpoint_path>` with the path to a checkpoint, `<algo>` with the
-name of the algorithm you used for training the agent, and
-`<framework>` with the configuration string of the framework you used
-to train it. The rest of the configuration is loaded from the
-`params.pkl` file next to the checkpoint's directory; if that file is
-missing, you have to configure `eval_agent.py` according to the
-checkpoint you are loading. Here is an example:
+Replace `<name>` with a name you want to have displayed, `<algo>` with
+the name of the algorithm you used for training the agent, and
+`<checkpoint_path>` with the path to a checkpoint. The rest of the
+configuration is loaded from the `params.pkl` file next to the
+checkpoint's directory; if that file is missing, you have to configure
+`configuration.py` according to the checkpoint you are loading. Here
+is an example:
 
 ```shell
-python eval_agent.py results/PPO/PPO_Hearts-v0_00000_00000_0_1970-01-01_00-00-00/checkpoint_000002/checkpoint-2 \
-    --name '🂭-collector' --algorithm PPO --framework torch
+python eval_agent.py --name '🂭-collector' --algorithm PPO results/PPO/PPO_Hearts-v0_00000_00000_0_1970-01-01_00-00-00/checkpoint_000002/checkpoint-2
 ```
 
 Since the server will wait until enough players are connected, you
@@ -209,8 +207,8 @@ for more information.
 
 ### Configuration
 
-In the `train.py` script, you will find several configuration options
-and dictionaries such as `stop_config`, `model_config` or the main
+In `configuration.py`, you will find several configuration options and
+dictionaries such as `stop_config`, `model_config` or the main
 `config`. These are used to configure RLlib; possible options and
 default values can be found at the following locations:
 
@@ -321,9 +319,10 @@ have to be re-configured for each checkpoint. If you obtain
 checkpoints that include a `params.pkl` file from an untrusted source
 and load them, arbitrary code may be executed.
 
-To avoid this security issue, set `ALLOW_PICKLES = False` in
-`eval_agent.py`. Note that you then have to configure `eval_agent.py`
-for each checkpoint so the configuration matches.
+To avoid this security issue, set `allow_pickles = False` in
+`configuration.py`. Note that you then have to configure
+`configuration.py` for each checkpoint you want to load in
+`eval_agent.py` so the configuration matches.
 
 ## References
 

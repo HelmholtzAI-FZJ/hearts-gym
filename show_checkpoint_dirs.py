@@ -1,6 +1,6 @@
 """
-Print directories containing RLlib checkpoints in the
-`results` directory.
+Print directories containing RLlib checkpoints in the configured
+results directory.
 
 Paths are sorted from oldest to newest.
 """
@@ -8,7 +8,7 @@ Paths are sorted from oldest to newest.
 import os
 from typing import List, Union
 
-RESULTS_DIR = 'results'
+from configuration import RESULTS_DIR
 
 IS_CP_FILE = '.is_checkpoint'
 

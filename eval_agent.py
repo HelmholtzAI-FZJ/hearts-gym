@@ -15,6 +15,8 @@ import ray
 from ray.rllib.utils.typing import TensorType, TrainerConfigDict
 from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 
+import configuration as conf
+from configuration import ENV_NAME, LEARNED_POLICY_ID
 from hearts_gym import utils
 from hearts_gym.envs.hearts_env import Reward
 from hearts_gym.server import utils as server_utils
@@ -26,17 +28,7 @@ from hearts_gym.server.hearts_server import (
     PORT,
 )
 
-ALLOW_PICKLES = True
-"""Whether to allow loading parameter pickle files.
-
-When set to `True`, this is a security hole when receiving untrusted
-checkpoints due to arbitrary code execution. Trade-off between safety
-and convenience.
-"""
-
 SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 5
-ENV_NAME = 'Hearts-v0'
-LEARNED_POLICY_ID = 'learned'
 
 
 def parse_args() -> Namespace:
@@ -51,6 +43,8 @@ def parse_args() -> Namespace:
     parser.add_argument(
         'checkpoint_path',
         type=str,
+        required=conf.checkpoint_path is None,
+        default=conf.checkpoint_path,
         help='Path of model checkpoint to load for evaluation.',
     )
     parser.add_argument(
@@ -61,13 +55,13 @@ def parse_args() -> Namespace:
     parser.add_argument(
         '--algorithm',
         type=str,
-        default='PPO',
+        default=conf.algorithm,
         help='Model algorithm to use.',
     )
     parser.add_argument(
         '--framework',
         type=str,
-        default=utils.DEFAULT_FRAMEWORK,
+        default=conf.framework,
         help='Framework used for training.',
     )
 
@@ -101,7 +95,8 @@ def _assert_same_envs(
     load_env_name = config.get('env', None)
     assert load_env_name == ENV_NAME, (
         f'loaded agent was trained on different environment '
-        f'({load_env_name}); please change `ENV_NAME` if this is fine'
+        f'({load_env_name}); please change `ENV_NAME` in `configuration.py` '
+        f'if this is fine'
     )
 
     env_config = config.get('env_config', {})
@@ -370,7 +365,7 @@ def main() -> None:
         # We only get strings as keys.
         str_player_index = str(player_index)
 
-        if ALLOW_PICKLES and has_params:
+        if conf.allow_pickles and has_params:
             with open(params_path, 'rb') as params_file:
                 config = pickle.load(params_file)
 
@@ -382,8 +377,8 @@ def main() -> None:
                 'please configure `LEARNED_POLICY_ID`'
             )
             _assert_same_envs(config, metadata)
-            print('Loaded configuration for checkpoint; '
-                  'to disable, set `ALLOW_PICKLES = False`.')
+            print('Loaded configuration for checkpoint; to disable, set '
+                  '`allow_pickles = False` in `configuration.py`.')
         else:
             env_config = {
                 'num_players': num_players,
@@ -391,27 +386,9 @@ def main() -> None:
                 'mask_actions': mask_actions,
             }
 
-            model_config = {
-                'use_lstm': False,
-            }
-
             config = {
-                'env': ENV_NAME,
+                **conf.config,
                 'env_config': env_config,
-                'model': model_config,
-                'multiagent': {
-                    'policies': {
-                        **utils.default_policies(
-                            ENV_NAME,
-                            env_config,
-                            LEARNED_POLICY_ID,
-                            'random',
-                            'rulebased',
-                            None,
-                        ),
-                    },
-                },
-                'num_gpus': utils.get_num_gpus(args.framework),
                 'framework': args.framework,
             }
         config = configure_remote_eval(config)
