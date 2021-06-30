@@ -6,14 +6,14 @@ Paths are sorted from oldest to newest.
 """
 
 import os
-from typing import List
+from typing import List, Union
 
 RESULTS_DIR = 'results'
 
 IS_CP_FILE = '.is_checkpoint'
 
 
-def most_recent_content_modification(dir_path: str) -> int:
+def most_recent_content_modification(dir_path: str) -> Union[int, float]:
     """Return the most recent modification time of a direct child file
     of the given directory.
 
