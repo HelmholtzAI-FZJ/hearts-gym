@@ -147,8 +147,8 @@ A central role in `train.py` is played by the file `configuration.py`.
 described here](#configuration). Results including configuration and
 checkpoints are saved in the `results` directory by default. You can
 list directories containing checkpoints with `python
-show_checkpoint_dirs.py`. [When you want to share your checkpoints,
-check out the corresponding section.](#sharing-checkpoints) After
+show_checkpoint_dirs.py`. When you want to [share your checkpoints,
+check out the corresponding section](#sharing-checkpoints). After
 training, your agent is automatically evaluated as well.
 
 To optimize your agent, the main thing you want to modify is the
