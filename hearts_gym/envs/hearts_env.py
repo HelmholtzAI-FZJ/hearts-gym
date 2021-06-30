@@ -183,41 +183,51 @@ class HeartsEnv(MultiAgentEnv):
         return [seeding.create_seed(seed)]
 
     @staticmethod
-    def on_table_state(player_index_offset: int) -> int:
-        """Return the state for a card put on the table by the player with the
-        given index offset from a certain agent.
+    def on_table_state(
+            player_index_offsets: Union[int, np.ndarray],
+    ) -> Union[int, np.ndarray]:
+        """Return the states for cards put on the table by the players
+        with the given index offsets from a certain agent.
 
-        The index offset should assume wrapping, so with 4 players in
+        The index offsets should assume wrapping, so with 4 players in
         total, the offset from the player with index 3 to player index 0
         is 1.
 
         Args:
-            player_index_offset (int): Index offset with relation to the
-                agent of the player that put the card on the table.
+            player_index_offsets (Union[int, np.ndarray]): Index offsets
+                with relation to the agent of the players that put cards
+                on the table.
 
         Returns:
-            int: State for a card put on the table by a given player.
+            Union[int, np.ndarray]: States for cards put on the table
+                by the given players.
         """
-        return HeartsEnv.NUM_GENERAL_OBSERVATION_STATES + player_index_offset
+        return HeartsEnv.NUM_GENERAL_OBSERVATION_STATES + player_index_offsets
 
-    def collected_state(self, player_index_offset: int) -> int:
-        """Return the state for a card collected (picked up by winning a trick)
-        by the player with the given index offset from a certain agent.
+    def collected_state(
+            self,
+            player_index_offsets: Union[int, np.ndarray],
+    ) -> Union[int, np.ndarray]:
+        """Return the states for cards collected (picked up by winning a
+        trick) by the players with the given index offsets from a
+        certain agent.
 
-        The index offset should assume wrapping, so with 4 players in
+        The index offsets should assume wrapping, so with 4 players in
         total, the offset from the player with index 3 to player index 0
         is 1.
 
         Args:
-            player_index_offset (int): Index offset with relation to the
-                agent of the player that has collected the card.
+            player_index_offsets (Union[int, np.ndarray]): Index offsets
+                with relation to the agent of the players that have
+                collected cards.
 
         Returns:
-            int: State for a card put on the table by a given player.
+            Union[int, np.ndarray]: States for cards collected by the
+                given players.
         """
         return (self.NUM_GENERAL_OBSERVATION_STATES
                 + self.game.num_players
-                + player_index_offset)
+                + player_index_offsets)
 
     @staticmethod
     def get_offset_indices(
