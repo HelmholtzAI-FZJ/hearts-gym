@@ -10,7 +10,7 @@ class RuleBasedPolicy(Policy):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        mask_actions = self.config.get('mask_actions', False)
+        mask_actions = self.config.get('mask_actions', True)
         self._mask_actions = mask_actions
 
         self._setup_variables()

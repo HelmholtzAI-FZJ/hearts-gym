@@ -44,7 +44,7 @@ class RandomPolicy(Policy):
         seed = self.config.get('seed', None)
         self._rng = np.random.default_rng(seed)
 
-        mask_actions = self.config.get('mask_actions', False)
+        mask_actions = self.config.get('mask_actions', True)
         self._mask_actions = mask_actions
 
         if mask_actions:
