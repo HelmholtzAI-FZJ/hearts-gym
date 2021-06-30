@@ -16,7 +16,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
-from .card_deck import Card, Deck, Seed
+from hearts_gym.utils.typing import Seed
+from .card_deck import Card, Deck
 
 
 class HeartsGame:

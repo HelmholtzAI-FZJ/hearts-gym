@@ -6,16 +6,16 @@ additional speed.
 from multiprocessing.pool import ThreadPool
 from typing import Any, Iterator, List, Tuple
 
-from hearts_gym.envs.hearts_env import (
+from hearts_gym import utils
+from hearts_gym.envs.hearts_env import HeartsEnv
+from hearts_gym.utils.mock_pool import MockPool
+from hearts_gym.utils.typing import (
     Action,
-    HeartsEnv,
     MultiInfo,
     MultiIsDone,
     MultiObservation,
     MultiReward,
 )
-from hearts_gym import utils
-from hearts_gym.utils.mock_pool import MockPool
 
 
 class VecHeartsEnv(HeartsEnv):

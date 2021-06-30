@@ -18,7 +18,6 @@ from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 import configuration as conf
 from configuration import ENV_NAME, LEARNED_POLICY_ID
 from hearts_gym import utils
-from hearts_gym.envs.hearts_env import Reward
 from hearts_gym.server import utils as server_utils
 from hearts_gym.server.hearts_server import (
     Client,
@@ -27,6 +26,7 @@ from hearts_gym.server.hearts_server import (
     SERVER_ADDRESS,
     PORT,
 )
+from hearts_gym.utils.typing import Reward
 
 SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 5
 

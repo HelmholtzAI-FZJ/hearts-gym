@@ -18,8 +18,7 @@ from configuration import (
 )
 import hearts_gym
 from hearts_gym import utils
-from hearts_gym.envs.card_deck import Seed
-from hearts_gym.envs.hearts_env import AgentId
+from hearts_gym.utils.typing import AgentId, Seed
 
 
 def configure_eval(

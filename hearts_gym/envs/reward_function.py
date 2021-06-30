@@ -4,7 +4,8 @@ The reward function an agent optimizes to win at Hearts.
 
 import numpy as np
 
-from .hearts_env import HeartsEnv, Reward
+from hearts_gym.utils.typing import Reward
+from .hearts_env import HeartsEnv
 
 
 class RewardFunction:

@@ -23,14 +23,14 @@ from ray.rllib.utils.typing import (
 )
 from ray.tune.trainable import Trainable
 
-from hearts_gym.envs.hearts_env import (
+import hearts_gym.utils.common as utils
+from hearts_gym.utils.typing import (
     AgentId,
     Info,
     MultiInfo,
     MultiIsDone,
     Reward,
 )
-import hearts_gym.utils.common as utils
 
 __all__ = [
     'EvalResults',

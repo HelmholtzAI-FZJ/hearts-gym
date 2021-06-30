@@ -9,7 +9,7 @@ import zlib
 
 from ray.rllib.utils.typing import TensorType
 
-from hearts_gym.envs.hearts_env import Action
+from hearts_gym.utils.typing import Action
 
 Request = socket.socket
 Address = Tuple[str, int]

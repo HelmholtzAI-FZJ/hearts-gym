@@ -30,8 +30,7 @@ from ray.tune.registry import (
 )
 from ray.tune.trainable import Trainable
 
-from hearts_gym.envs.card_deck import Seed
-from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
+from hearts_gym.utils.typing import Seed
 
 # FIXME take default config options from RLlib (e.g. COMMON_CONFIG, MODEL_DEFAULTS, ...)
 
@@ -102,6 +101,7 @@ def default_policies(
     mask_actions = env_config.get('mask_actions', True)
     obs_space, act_space = get_spaces(env_name, env_config)
 
+    from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
     return {
         learned_policy_id: (None, obs_space, act_space, {}),
         random_policy_id: (

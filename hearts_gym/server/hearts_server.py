@@ -16,10 +16,10 @@ from gym.utils import seeding
 import numpy as np
 
 from hearts_gym import utils
-from hearts_gym.envs.hearts_env import (
+from hearts_gym.envs.hearts_env import HeartsEnv
+from hearts_gym.utils.typing import (
     Action,
     GymSeed,
-    HeartsEnv,
     MultiInfo,
     MultiIsDone,
     MultiObservation,

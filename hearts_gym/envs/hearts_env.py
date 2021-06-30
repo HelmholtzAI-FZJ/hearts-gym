@@ -6,37 +6,23 @@ A multi-agent Gym-like environment for learning the game of Hearts
 from contextlib import closing
 from io import StringIO
 import sys
-from typing import Any, Dict, List, Optional, TextIO, Tuple, Union
+from typing import Any, List, Optional, TextIO, Tuple, Union
 
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
+from hearts_gym.utils.typing import (
+    GymSeed,
+    MultiAction,
+    MultiInfo,
+    MultiIsDone,
+    MultiObservation,
+    MultiReward,
+    Observation,
+)
 from .hearts_game import HeartsGame
-
-GymSeed = Union[int, str, None]
-"""Seed type as supported by the `gym` library."""
-Real = Union[int, float, np.integer, np.floating]
-"""Real number type."""
-
-AgentId = int
-"""ID of an agent.
-
-For this environment, these are the corresponding player indices.
-"""
-Action = int
-"""An action giving the index of which card in hand to play."""
-MultiAction = Dict[AgentId, Action]
-
-Observation = Dict[str, Any]
-MultiObservation = Dict[AgentId, Observation]
-Reward = Real
-MultiReward = Dict[AgentId, Reward]
-IsDone = bool
-MultiIsDone = Dict[Union[AgentId, str], IsDone]
-Info = Dict[str, Any]
-MultiInfo = Dict[AgentId, Info]
 
 
 class HeartsEnv(MultiAgentEnv):

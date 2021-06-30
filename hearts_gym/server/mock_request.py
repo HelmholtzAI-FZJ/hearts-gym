@@ -9,8 +9,8 @@ import socket
 from typing import List, Optional
 
 from hearts_gym import HeartsEnv
-from hearts_gym.envs.card_deck import Seed
 from hearts_gym.server import utils as server_utils
+from hearts_gym.utils.typing import Seed
 
 
 class MockRequest(socket.socket):

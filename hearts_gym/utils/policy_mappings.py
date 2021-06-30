@@ -2,7 +2,7 @@ from typing import Callable
 
 from ray.rllib.utils.typing import PolicyID
 
-from hearts_gym.envs.hearts_env import AgentId
+from hearts_gym.utils.typing import AgentId
 
 
 def create_policy_mapping(

@@ -3,9 +3,9 @@ Primitive classes for classical card game decks.
 """
 
 import random
-from typing import List, Union
+from typing import List
 
-Seed = Union[None, int, float, str, bytes, bytearray]
+from hearts_gym.utils.typing import Seed
 
 unicode_level = 1
 """Default for how advanced the unicode used for printing cards
