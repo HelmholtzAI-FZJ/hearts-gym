@@ -219,6 +219,28 @@ class HeartsEnv(MultiAgentEnv):
                 + self.game.num_players
                 + player_index_offset)
 
+    @staticmethod
+    def get_offset_indices(
+            player_indices: np.ndarray,
+            offset_from_player_index: int,
+            num_players: int,
+    ) -> np.ndarray:
+        """Return the given indices converted to offset indices for the
+        player with the given index.
+
+        Args:
+            player_indices (np.ndarray): Indices to convert to
+                offset indices.
+            offset_from_player_index (int): Index of the player the
+                indices are being offset from.
+            num_players (int): Amount of players in the game.
+
+        Returns:
+            np.ndarray: The given indices as offset indices from the
+                given player index.
+        """
+        return (player_indices - offset_from_player_index) % num_players
+
     def _game_state_to_obs(self, player_index: int) -> Observation:
         """Return all necessary game state information as a player
         index-independent observation for the player with the given
@@ -269,24 +291,29 @@ class HeartsEnv(MultiAgentEnv):
         if self.game.STATE_UNKNOWN != self.STATE_UNKNOWN:
             state_unknown_indices = cards_state == self.game.STATE_UNKNOWN
 
-        cards_state[on_table_indices] = (
-            self.on_table_state(
-                (
-                    cards_state[on_table_indices]
-                    - lowest_on_table_state
-                    - player_index
-                ) % self.game.num_players
-            )
+        on_table_player_indices = (
+            cards_state[on_table_indices]
+            - lowest_on_table_state
+        )
+        collected_player_indices = (
+            cards_state[collected_indices]
+            - lowest_collected_state
+        )
+
+        cards_state[on_table_indices] = self.on_table_state(
+            self.get_offset_indices(
+                on_table_player_indices,
+                player_index,
+                self.game.num_players,
+            ),
         )
         cards_state[in_hand_indices] = self.STATE_UNKNOWN
-        cards_state[collected_indices] = (
-            self.collected_state(
-                (
-                    cards_state[collected_indices]
-                    - lowest_collected_state
-                    - player_index
-                ) % self.game.num_players
-            )
+        cards_state[collected_indices] = self.collected_state(
+            self.get_offset_indices(
+                collected_player_indices,
+                player_index,
+                self.game.num_players,
+            ),
         )
         cards_state[in_own_hand_indices] = self.STATE_ON_HAND
         if self.game.STATE_UNKNOWN != self.STATE_UNKNOWN:
