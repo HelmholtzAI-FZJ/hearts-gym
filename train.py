@@ -53,6 +53,18 @@ def configure_eval(
     eval_config['multiagent'] = multiagent_config
     multiagent_config['policy_mapping_fn'] = policy_mapping_fn
 
+    policies_config = multiagent_config.get('policies', {}).copy()
+    multiagent_config['policies'] = policies_config
+    if RANDOM_POLICY_ID in policies_config:
+        random_policy = policies_config[RANDOM_POLICY_ID]
+        random_policy_config = random_policy[3]
+        random_policy_config = {
+            **random_policy_config,
+            'seed': seed,
+        }
+        policies_config[RANDOM_POLICY_ID] = \
+            random_policy[:3] + (random_policy_config,) + random_policy[4:]
+
     eval_config['num_gpus'] = (
         utils.get_num_gpus(eval_config.get('framework', 'tf'))
         if reset_workers
