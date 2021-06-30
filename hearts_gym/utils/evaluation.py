@@ -492,7 +492,7 @@ def print_results_table(
     longest_in_cols = [longest_agent_name]
     longest_in_cols.extend(longest_placements)
     longest_in_cols.append(longest_penalty)
-    longest_in_cols = list(map(max, zip(  # type: ignore[arg-type]
+    longest_in_cols: List[int] = list(map(max, zip(  # type: ignore[arg-type]
         longest_in_cols,
         map(_strlen, header),
     )))
