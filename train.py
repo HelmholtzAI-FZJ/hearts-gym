@@ -278,7 +278,7 @@ def main() -> None:
         print('Warning: you are not evaluating a learned policy; '
               'modify `eval_policy_mapping` to change this')
 
-    assert checkpoint_path is None or not os.path.isdir(checkpoint_path), \
+    assert checkpoint_path is None or os.path.isfile(checkpoint_path), \
         'please pass the checkpoint file, not its directory'
 
     analysis = tune.run(
