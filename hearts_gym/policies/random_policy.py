@@ -30,8 +30,9 @@ class RandomPolicy(Policy):
         """Construct a randomly acting policy.
 
         The following policy configuration options are used:
-        - "seed": Random number generator seed.
+        - "seed": Random number generator seed. Default is `None`.
         - "mask_actions": Whether action masking is enabled.
+          Default is `True`.
 
         See also `Policy.__init__`.
 
