@@ -148,26 +148,23 @@ class HeartsGame:
         self.prev_collected: List[List[Card]]
         """All cards collected before the previous trick."""
 
-        self.prev_was_illegals: List[Optional[bool]] = \
-            [None] * self.num_players
+        self.prev_was_illegals: List[Optional[bool]]
         """For each player, whether their previous action was illegal.
 
         Entries are `None` if no action has been taken yet.
         """
-        self.prev_states: List[Optional[np.ndarray]] = \
-            [None] * self.num_players
+        self.prev_states: List[Optional[np.ndarray]]
         """State before the last action for each player.
 
         Entries are `None` if no action has been taken yet.
         """
 
-        self.prev_was_first_trick: Optional[bool] = None
+        self.prev_was_first_trick: Optional[bool]
         """Whether the previous trick was the first one.
 
         `None` if no trick has been distributed yet.
         """
-        self.prev_leading_hearts_allowed: List[Optional[bool]] = \
-            [None] * self.num_players
+        self.prev_leading_hearts_allowed: List[Optional[bool]]
         """For each player, whether leading hearts were allowed for the
         previous action.
 
