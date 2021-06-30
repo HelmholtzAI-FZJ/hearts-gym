@@ -51,7 +51,7 @@ def configure_eval(
     env_config['seed'] = seed
 
     multiagent_config = eval_config.get('multiagent', {}).copy()
-    multiagent_config['multiagent'] = multiagent_config
+    eval_config['multiagent'] = multiagent_config
     multiagent_config['policy_mapping_fn'] = policy_mapping_fn
 
     eval_config['num_gpus'] = (
