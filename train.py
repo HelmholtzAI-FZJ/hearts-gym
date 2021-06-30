@@ -152,6 +152,7 @@ def main() -> None:
 
     # This most likely does not work due to RLlib issues.
     reset_workers = False
+    """Experimental flag to be able to use workers for evaluation."""
 
     if reset_workers:
         utils.fix_ray_shutdown()
