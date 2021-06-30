@@ -239,31 +239,31 @@ class HeartsEnv(MultiAgentEnv):
         """
         cards_state = self.game.state.copy()
 
-        first_on_table_state = self.game.on_table_state(0)
-        last_on_table_state = self.game.on_table_state(
+        lowest_on_table_state = self.game.on_table_state(0)
+        highest_on_table_state = self.game.on_table_state(
             self.game.num_players - 1)
 
-        first_in_hand_state = self.game.in_hand_state(0)
-        last_in_hand_state = self.game.in_hand_state(
+        lowest_in_hand_state = self.game.in_hand_state(0)
+        highest_in_hand_state = self.game.in_hand_state(
             self.game.num_players - 1)
 
-        first_collected_state = self.game.collected_state(0)
-        last_collected_state = self.game.collected_state(
+        lowest_collected_state = self.game.collected_state(0)
+        highest_collected_state = self.game.collected_state(
             self.game.num_players - 1)
 
         in_own_hand_state = self.game.in_hand_state(player_index)
 
         on_table_indices = (
-            (cards_state >= first_on_table_state)
-            & (cards_state <= last_on_table_state)
+            (cards_state >= lowest_on_table_state)
+            & (cards_state <= highest_on_table_state)
         )
         in_hand_indices = (
-            (cards_state >= first_in_hand_state)
-            & (cards_state <= last_in_hand_state)
+            (cards_state >= lowest_in_hand_state)
+            & (cards_state <= highest_in_hand_state)
         )
         collected_indices = (
-            (cards_state >= first_collected_state)
-            & (cards_state <= last_collected_state)
+            (cards_state >= lowest_collected_state)
+            & (cards_state <= highest_collected_state)
         )
         in_own_hand_indices = cards_state == in_own_hand_state
         if self.game.STATE_UNKNOWN != self.STATE_UNKNOWN:
@@ -273,7 +273,7 @@ class HeartsEnv(MultiAgentEnv):
             self.on_table_state(
                 (
                     cards_state[on_table_indices]
-                    - first_on_table_state
+                    - lowest_on_table_state
                     - player_index
                 ) % self.game.num_players
             )
@@ -283,7 +283,7 @@ class HeartsEnv(MultiAgentEnv):
             self.collected_state(
                 (
                     cards_state[collected_indices]
-                    - first_collected_state
+                    - lowest_collected_state
                     - player_index
                 ) % self.game.num_players
             )
