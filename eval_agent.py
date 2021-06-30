@@ -25,7 +25,6 @@ from hearts_gym.server.hearts_server import (
     SERVER_ADDRESS,
     PORT,
 )
-from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
 ALLOW_PICKLES = True
 """Whether to allow loading parameter pickle files.
@@ -391,7 +390,6 @@ def main() -> None:
                 'deck_size': deck_size,
                 'mask_actions': mask_actions,
             }
-            obs_space, act_space = utils.get_spaces(ENV_NAME, env_config)
 
             model_config = {
                 'use_lstm': False,
@@ -403,11 +401,14 @@ def main() -> None:
                 'model': model_config,
                 'multiagent': {
                     'policies': {
-                        LEARNED_POLICY_ID: (None, obs_space, act_space, {}),
-                        'random': (RandomPolicy, obs_space, act_space,
-                                   {'mask_actions': mask_actions}),
-                        'rulebased': (RuleBasedPolicy, obs_space, act_space,
-                                      {'mask_actions': mask_actions}),
+                        **utils.default_policies(
+                            ENV_NAME,
+                            env_config,
+                            LEARNED_POLICY_ID,
+                            'random',
+                            'rulebased',
+                            None,
+                        ),
                     },
                 },
                 'num_gpus': utils.get_num_gpus(args.framework),

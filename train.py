@@ -13,7 +13,6 @@ import hearts_gym
 from hearts_gym import utils
 from hearts_gym.envs.card_deck import Seed
 from hearts_gym.envs.hearts_env import AgentId
-from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
 
 LEARNED_AGENT_ID = 0
 """Agent ID of the learned policy."""
@@ -178,6 +177,8 @@ def main() -> None:
         'rulebased',
     )
 
+    random_policy_seed = None
+
     # Test config
 
     eval_seed = seed + 1
@@ -207,8 +208,6 @@ def main() -> None:
         'seed': seed,
         'mask_actions': mask_actions,
     }
-
-    obs_space, act_space = utils.get_spaces(env_name, env_config)
 
     opt_metric = 'episode_reward_mean'
     opt_mode = 'max'
@@ -250,11 +249,14 @@ def main() -> None:
         'multiagent': {
             'policies_to_train': [LEARNED_POLICY_ID],
             'policies': {
-                LEARNED_POLICY_ID: (None, obs_space, act_space, {}),
-                'random': (RandomPolicy, obs_space, act_space,
-                           {'mask_actions': mask_actions}),
-                'rulebased': (RuleBasedPolicy, obs_space, act_space,
-                              {'mask_actions': mask_actions}),
+                **utils.default_policies(
+                    env_name,
+                    env_config,
+                    LEARNED_POLICY_ID,
+                    'random',
+                    'rulebased',
+                    random_policy_seed,
+                ),
             },
             'policy_mapping_fn': policy_mapping_fn,
         },

@@ -4,7 +4,7 @@ Common utility methods for RLlib.
 
 import multiprocessing
 from pathlib import Path
-from typing import Callable, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from gym.spaces import Space
 import ray
@@ -19,6 +19,7 @@ from ray.rllib.utils.typing import (
     EnvConfigDict,
     EnvType,
     ModelConfigDict,
+    PolicyID,
     TrainerConfigDict,
 )
 from ray.tune.registry import (
@@ -29,11 +30,15 @@ from ray.tune.registry import (
 )
 from ray.tune.trainable import Trainable
 
+from hearts_gym.envs.card_deck import Seed
+from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
+
 # FIXME take default config options from RLlib (e.g. COMMON_CONFIG, MODEL_DEFAULTS, ...)
 
 __all__ = [
     'DEFAULT_FRAMEWORK',
     'parse_bool',
+    'default_policies',
     'fix_ray_shutdown',
     'get_registered_env',
     'register_model',
@@ -73,6 +78,45 @@ def parse_bool(string):
     assert string == 'False' or string == 'True', \
         'please only use "False" or "True" as boolean arguments.'
     return string != 'False'
+
+
+def default_policies(
+        env_name: str,
+        env_config: EnvConfigDict,
+        learned_policy_id: PolicyID,
+        random_policy_id: PolicyID,
+        rulebased_policy_id: PolicyID,
+        random_policy_seed: Seed,
+) -> Dict[PolicyID, Tuple[Optional[type], Space, Space, Dict[str, Any]]]:
+    """Add the default policies to the given configuration, modifying
+    it in-place.
+
+    Args:
+        config (TrainerConfigDict): Configuration to add the policies to.
+        learned_policy_id (PolicyID): ID of the learned policy.
+        random_policy_id (PolicyID): ID of the random policy.
+        rulebased_policy_id (PolicyID): ID of the rule-based policy.
+        random_policy_seed (Seed): Random number generator seed for the
+            random policy.
+    """
+    mask_actions = env_config.get('mask_actions', True)
+    obs_space, act_space = get_spaces(env_name, env_config)
+
+    return {
+        learned_policy_id: (None, obs_space, act_space, {}),
+        random_policy_id: (
+            RandomPolicy,
+            obs_space,
+            act_space,
+            {'seed': random_policy_seed, 'mask_actions': mask_actions},
+        ),
+        rulebased_policy_id: (
+            RuleBasedPolicy,
+            obs_space,
+            act_space,
+            {'mask_actions': mask_actions},
+        ),
+    }
 
 
 def fix_ray_shutdown() -> None:
