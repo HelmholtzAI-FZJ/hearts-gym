@@ -8,7 +8,7 @@ import os
 import pickle
 from tempfile import NamedTemporaryFile
 import time
-from typing import Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 import ray
@@ -39,6 +39,7 @@ __all__ = [
     'get_initial_states',
     'compute_actions',
     'evaluate',
+    'print_results_table',
 ]
 
 EvalResults = Tuple[List[int], List[List[int]], int, int, float]
@@ -444,3 +445,76 @@ def evaluate(
             num_test_games,
             learned_agent_id,
         )
+
+
+def _strlen(x: Any) -> int:
+    """Return the length of the string-representation of the
+    given object.
+
+    Args:
+        x (Any): Object to get string length of.
+
+    Returns:
+        int: Length of the string-representaton of the given object.
+    """
+    return len(str(x))
+
+
+def print_results_table(
+        total_penalties: List[int],
+        total_placements: List[List[int]],
+        policy_mapping_fn: Callable[[AgentId], PolicyID],
+) -> None:
+    """Print a table summarizing the given results.
+
+    Args:
+        total_penalties (List[int]): Total penalties for each player,
+            sorted by player index.
+        total_placements (List[List[int]]): Total amount of each ranking
+            sorted by ranking for each player, sorted by player index.
+        policy_mapping_fn (Callable[[AgentId], PolicyID]): Function
+            mapping agent IDs to policy IDs.
+    """
+    num_players = len(total_penalties)
+    agent_names = [policy_mapping_fn(i) for i in range(num_players)]
+
+    header = ['policy']
+    header.extend(f'# rank {i}' for i in range(1, num_players + 1))
+    header.append('total penalty')
+
+    longest_agent_name = max(map(_strlen, agent_names))
+    longest_placements = [
+        max(map(_strlen, map(lambda x: x[i], total_placements)))
+        for i in range(num_players)
+    ]
+    longest_penalty = max(map(_strlen, total_penalties))
+
+    longest_in_cols = [longest_agent_name]
+    longest_in_cols.extend(longest_placements)
+    longest_in_cols.append(longest_penalty)
+    longest_in_cols = list(map(max, zip(  # type: ignore[arg-type]
+        longest_in_cols,
+        map(_strlen, header),
+    )))
+
+    row_formatter = ''.join([
+        '| ',
+        f'{{:<{longest_in_cols[0]}}}',
+        ' | ',
+        ' | '.join(f'{{:>{width}}}' for width in longest_in_cols[1:]),
+        ' |',
+    ])
+    header_separator = ''.join([
+        '|',
+        '+'.join('-' * (width + 2) for width in longest_in_cols),
+        '|',
+    ])
+
+    print(row_formatter.format(*header))
+    print(header_separator)
+    for (name, placements, penalty) in zip(
+            agent_names,
+            total_placements,
+            total_penalties,
+    ):
+        print(row_formatter.format(name, *placements, penalty))
