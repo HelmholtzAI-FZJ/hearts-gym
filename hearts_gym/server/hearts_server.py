@@ -1513,6 +1513,18 @@ class HeartsRequestHandler(BaseRequestHandler):
             )
         )
 
+    def _index_to_name(self, player_index: int) -> str:
+        """Return the name of the player with the given index.
+
+        Args:
+            player_index (int): Index of the player to query the
+                name for.
+
+        Returns:
+            str: Name of the player.
+        """
+        return self.server.clients[player_index].name
+
     def handle(self) -> None:
         self.server.num_games = 0
         self.server.stats.clear()
@@ -1594,10 +1606,15 @@ class HeartsRequestHandler(BaseRequestHandler):
                 else:
                     self.server.print_log(f'Winner: {final_rankings.index(1)}')
 
-            self.server.print_log(
+            self.server.logger.info(
                 f'Total penalties: {self.server.total_penalties}')
-            self.server.print_log(
+            self.server.logger.info(
                 f'Total placements: {self.server.total_placements}')
+            utils.print_results_table(
+                self.server.total_penalties,
+                self.server.total_placements,
+                self._index_to_name,
+            )
 
             return_data: List[Tuple[  # type: ignore[no-redef]
                 int,
