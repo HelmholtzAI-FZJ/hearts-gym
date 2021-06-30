@@ -301,7 +301,7 @@ def main() -> None:
         metric=opt_metric,
     )
     # last_cp = analysis.get_last_checkpoint()
-    print('best cp:', best_cp)
+    print('Using best checkpoint for evaluation:', best_cp)
 
     if reset_workers:
         # FIXME Even with a reset, the workers are not properly cleaned up.
