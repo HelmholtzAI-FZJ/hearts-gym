@@ -22,48 +22,6 @@ LEARNED_POLICY_ID = 'learned'
 # FIXME argument parsing
 
 
-def policy_mapping_one_learned_rest_random(agent_id: AgentId) -> PolicyID:
-    """Return the ID for a learned policy for the agent with
-    `LEARNED_AGENT_ID`, otherwise for a randomly acting policy.
-
-    Args:
-        agent_id (AgentId): Agent ID to get the policy for.
-
-    Returns:
-        PolicyID: ID of the policy for the queried agent.
-    """
-    if agent_id == LEARNED_AGENT_ID:
-        return LEARNED_POLICY_ID
-    return 'random'
-
-
-def policy_mapping_all_learned(_) -> PolicyID:
-    """Always return a learned policy.
-
-    Returns:
-        PolicyID: A learned policy.
-    """
-    return LEARNED_POLICY_ID
-
-
-def policy_mapping_all_random(_) -> PolicyID:
-    """Always return a randomly acting policy.
-
-    Returns:
-        PolicyID: A randomly acting policy.
-    """
-    return 'random'
-
-
-def policy_mapping_all_rulebased(_) -> PolicyID:
-    """Always return a rule-based policy.
-
-    Returns:
-        PolicyID: A policy acting with hardcoded rules.
-    """
-    return 'rulebased'
-
-
 def configure_eval(
         config: TrainerConfigDict,
         seed: Seed,
@@ -210,14 +168,26 @@ def main() -> None:
     seed = 0
     mask_actions = True
 
-    # policy_mapping_fn = policy_mapping_one_learned_rest_random
-    policy_mapping_fn = policy_mapping_all_learned
+    policy_mapping_fn = create_policy_mapping(
+        'all_learned',
+        # 'one_learned_rest_random',
+        LEARNED_AGENT_ID,
+        LEARNED_POLICY_ID,
+        'random',
+        'rulebased',
+    )
 
     # Test config
 
     eval_seed = seed + 1
     num_test_games = 5000
-    eval_policy_mapping_fn = policy_mapping_one_learned_rest_random
+    eval_policy_mapping_fn = create_policy_mapping(
+        'one_learned_rest_random',
+        LEARNED_AGENT_ID,
+        LEARNED_POLICY_ID,
+        'random',
+        'rulebased',
+    )
 
     # Unstable method is a faster, re-implemented version. Due to that,
     # it may sometimes even offer better support.
@@ -298,9 +268,9 @@ def main() -> None:
     }
     utils.maybe_set_up_masked_actions_model(algorithm, config)
 
-    if (
-            eval_policy_mapping_fn != policy_mapping_all_random
-            and eval_policy_mapping_fn != policy_mapping_all_rulebased
+    if any(
+            eval_policy_mapping_fn(agent_id) == LEARNED_POLICY_ID
+            for agent_id in range(num_players)
     ):
         assert eval_policy_mapping_fn(LEARNED_AGENT_ID) == LEARNED_POLICY_ID, \
             'agent index does not match policy with name "learned"'
