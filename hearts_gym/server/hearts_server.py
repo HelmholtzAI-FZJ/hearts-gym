@@ -1614,6 +1614,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 self.server.total_penalties,
                 self.server.total_placements,
                 self._index_to_name,
+                self.server.num_illegals,
             )
 
             return_data: List[Tuple[  # type: ignore[no-redef]

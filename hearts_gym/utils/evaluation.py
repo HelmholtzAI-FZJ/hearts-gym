@@ -464,6 +464,7 @@ def print_results_table(
         total_penalties: List[int],
         total_placements: List[List[int]],
         policy_mapping_fn: Callable[[AgentId], PolicyID],
+        num_illegals: Optional[List[int]] = None,
 ) -> None:
     """Print a table summarizing the given results.
 
@@ -481,6 +482,8 @@ def print_results_table(
     header = ['policy']
     header.extend(f'# rank {i}' for i in range(1, num_players + 1))
     header.append('total penalty')
+    if num_illegals is not None:
+        header.append('# illegal actions')
 
     longest_agent_name = max(map(_strlen, agent_names))
     longest_placements = [
@@ -492,6 +495,9 @@ def print_results_table(
     longest_in_cols = [longest_agent_name]
     longest_in_cols.extend(longest_placements)
     longest_in_cols.append(longest_penalty)
+    if num_illegals is not None:
+        longest_num_illegals = max(map(_strlen, num_illegals))
+        longest_in_cols.append(longest_num_illegals)
     longest_in_cols: List[int] = list(map(max, zip(  # type: ignore[arg-type]
         longest_in_cols,
         map(_strlen, header),
@@ -512,9 +518,13 @@ def print_results_table(
 
     print(row_formatter.format(*header))
     print(header_separator)
-    for (name, placements, penalty) in zip(
-            agent_names,
-            total_placements,
-            total_penalties,
-    ):
-        print(row_formatter.format(name, *placements, penalty))
+    table_values = (
+        agent_names,
+        total_placements,
+        total_penalties,
+    )
+    if num_illegals is not None:
+        table_values = table_values + (num_illegals,)
+    for row in zip(*table_values):
+        name, placements = row[:2]
+        print(row_formatter.format(name, *placements, *row[2:]))
