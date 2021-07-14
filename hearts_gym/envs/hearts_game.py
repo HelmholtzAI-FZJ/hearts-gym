@@ -45,7 +45,7 @@ class HeartsGame:
     winner.
 
     In addition and due to that, currently, there is no implementation
-    for discarding cards at the start of each game.
+    for discarding ("passing") cards at the start of each game.
 
     Instead of removing a certain set of cards from the deck when the
     deck size is not divisible by the number of players, we instead
