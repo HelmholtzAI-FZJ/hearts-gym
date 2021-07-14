@@ -62,7 +62,7 @@ class Client:
             Optional[str]: The filtered name or `None` if it
                 was rejected.
         """
-        # FIXME we should also filter bad words here
+        # TODO we should also filter bad words here
         name = name.decode('utf-8', errors='replace')
         name = Client.CONTROL_CHAR_RE.sub('', name)
         return name

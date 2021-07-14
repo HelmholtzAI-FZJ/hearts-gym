@@ -296,7 +296,7 @@ def _adjust_other_config_for_action_masking(
         model_config['use_attention'] = False
         masked_actions_model_key = masked_actions_model_key + '_attn'
 
-    # FIXME handle other DQN variants
+    # TODO handle other DQN variants
     if algorithm == 'DQN':
         _adjust_dqn_config(config)
         if _is_tf_framework(framework):

@@ -166,7 +166,7 @@ class HeartsServer(TCPServer):
         self._wait_duration_sec = wait_duration_sec
         self._max_num_clients = num_players
 
-        # FIXME Allow setting batch size per client
+        # TODO Allow setting max batch size per client
         self.num_parallel_games = num_parallel_games
         self.max_num_games = max_num_games
 

@@ -43,8 +43,8 @@ def _split_input_dict(
         TensorType: The action mask removed from the input dictionary.
     """
     action_mask = input_dict['obs'][HeartsEnv.ACTION_MASK_KEY]
-    # FIXME allow ACTION_MASK_KEY to be placed anywhere, not just at
-    # start (get start index)
+    # TODO allow ACTION_MASK_KEY to be placed anywhere, not just at
+    #      start (get start index)
     action_mask_len = action_mask.shape[-1]
 
     # The action mask is at the front as the DictFlatteningProcessor

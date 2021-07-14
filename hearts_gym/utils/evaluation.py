@@ -353,7 +353,7 @@ def _eval_unstable(
         test_start_time,
     ) = _setup_eval_vars(num_players)
 
-    # FIXME use batching for more speed; see `eval_agent.py`
+    # TODO use batching for more speed; see `eval_agent.py`
 
     model_config = eval_config.get('model', {})
     make_env = utils.get_registered_env(env_name)

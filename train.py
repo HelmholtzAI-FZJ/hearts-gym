@@ -138,7 +138,7 @@ def main() -> None:
     print('Using best checkpoint for evaluation:', best_cp)
 
     if reset_workers:
-        # FIXME Even with a reset, the workers are not properly cleaned up.
+        # TODO Even with a reset, the workers are not properly cleaned up.
 
         # Reset so we free the workers
         ray.shutdown()
