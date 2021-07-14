@@ -65,6 +65,11 @@ class HeartsGame:
     """Maximum penalty score possibly reachable."""
     RANK_QUEEN = Card.RANKS.index('Q')
 
+    # These are the numbers the rules state; the program is able to
+    # handle 2 to 8 players without modification.
+    MIN_NUM_PLAYERS = 3
+    MAX_NUM_PLAYERS = 6
+
     def __init__(
             self,
             *,
@@ -79,7 +84,10 @@ class HeartsGame:
             deck_size (int): Amount of cards in the deck.
             seed (Seed): Random number generator seed.
         """
-        assert num_players > 1, 'need at least two players'
+        assert self.MIN_NUM_PLAYERS <= num_players <= self.MAX_NUM_PLAYERS, (
+            f'number of players must be between {self.MIN_NUM_PLAYERS} and '
+            f'{self.MAX_NUM_PLAYERS} inclusively'
+        )
         assert deck_size % Card.NUM_SUITS == 0, \
             'deck size must be divisible by ' + str(Card.NUM_SUITS)
 
