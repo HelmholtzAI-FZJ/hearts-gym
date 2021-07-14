@@ -17,7 +17,7 @@ from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 
 import configuration as conf
 from configuration import ENV_NAME, LEARNED_POLICY_ID
-from hearts_gym import utils
+from hearts_gym import HeartsEnv, utils
 from hearts_gym.server import utils as server_utils
 from hearts_gym.server.hearts_server import (
     Client,
@@ -100,7 +100,7 @@ def _assert_same_envs(
     )
 
     env_config = config.get('env_config', {})
-    for attr in ['num_players', 'deck_size', 'mask_actions']:
+    for attr in ['num_players', 'deck_size']:
         load_attr = env_config.get(attr, None)
         server_attr = server_metadata[attr]
         assert load_attr == server_attr, (
@@ -383,7 +383,10 @@ def main() -> None:
             env_config = {
                 'num_players': num_players,
                 'deck_size': deck_size,
-                'mask_actions': mask_actions,
+                # We allow the user to set their own here so they may
+                # use a non-action-masked model even though the
+                # environment is action-masked.
+                'mask_actions': mask_actions and conf.mask_actions,
             }
 
             config = {
@@ -396,6 +399,10 @@ def main() -> None:
 
         agent = utils.load_agent(algorithm, str(checkpoint_path), config)
         server_utils.send_ok(client)
+        remove_action_mask = (
+            mask_actions
+            and not config.get('env_config', {}).get('mask_actions', True)
+        )
 
         num_iters = 0
         num_games = 0
@@ -434,7 +441,13 @@ def main() -> None:
                         break
                 assert all(str_player_index in obs for obs in obss), \
                     'received wrong data'
-                obss = [obs[str_player_index] for obs in obss]
+                if remove_action_mask:
+                    obss = [
+                        obs[str_player_index][HeartsEnv.OBS_KEY]
+                        for obs in obss
+                    ]
+                else:
+                    obss = [obs[str_player_index] for obs in obss]
                 # print('Received', len(obss), 'observations.')
 
                 masked_prev_actions = _take_indices(prev_actions, indices)
