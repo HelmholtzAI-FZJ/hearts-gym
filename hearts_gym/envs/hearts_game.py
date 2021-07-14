@@ -26,7 +26,7 @@ class HeartsGame:
     Needs to be `reset` before being able to play.
 
     Rules are mostly implemented as specified by the modern rules from
-    Morehead (2001).
+    Morehead (2001) (ISBN: 9780451204844).
 
     - The game starts with the player with the two of clubs playing it.
     - In the first trick, players are not allowed to play penalty-scored

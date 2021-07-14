@@ -14,8 +14,8 @@ Also includes a client-server architecture to remotely evaluate local
 agents.
 
 The rules are mostly implemented as specified by the modern rules from
-Morehead (2001). For a more detailed description of the rules and
-differences from the original, execute the following:
+Morehead (2001) (ISBN: 9780451204844). For a more detailed description
+of the rules and differences from the original, execute the following:
 
 ```shell
 python -m pydoc hearts_gym.envs.hearts_game.HeartsGame
