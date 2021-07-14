@@ -12,6 +12,7 @@ References:
 - https://en.wikipedia.org/wiki/Microsoft_Hearts
 """
 
+import bisect
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -875,13 +876,12 @@ class HeartsGame:
                 Card.NUM_RANKS - self._cards_per_suit,
                 Card.NUM_RANKS,
         ):
-            # TODO Maybe use binary search here.
             card = Card(Card.SUIT_CLUB, rank)
             for (player_index, hand) in enumerate(self.hands):
-                if card not in hand:
+                card_index = bisect.bisect_left(hand, card)
+                if card_index >= len(hand) or hand[card_index] != card:
                     continue
 
-                card_index = hand.index(card)
                 self.leading_player_index = player_index
                 break
 
