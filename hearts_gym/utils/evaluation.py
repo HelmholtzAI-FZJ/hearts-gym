@@ -518,13 +518,13 @@ def print_results_table(
 
     print(row_formatter.format(*header))
     print(header_separator)
-    table_values = (
+    table_values = [
         agent_names,
         total_placements,
         total_penalties,
-    )
+    ]
     if num_illegals is not None:
-        table_values = table_values + (num_illegals,)
+        table_values.append(num_illegals)
     for row in zip(*table_values):
         name, placements = row[:2]
         print(row_formatter.format(name, *placements, *row[2:]))
