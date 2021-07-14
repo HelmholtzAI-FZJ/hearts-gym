@@ -81,7 +81,7 @@ class RandomPolicy(Policy):
             prev_reward_batch: Union[List[TensorType], TensorType] = None,
             **kwargs,
     ) -> Tuple[TensorType, List[TensorType], Dict[str, TensorType]]:
-        """Return a randomly sampled action.
+        """Return randomly sampled actions.
 
         See also `Policy.compute_actions`.
 
