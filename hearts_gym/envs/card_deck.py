@@ -127,7 +127,7 @@ class Deck:
 
         Args:
             size (int): How many cards should be in the deck.
-            build_ordered (bool): Whether higher-ranked cards should be
+            build_ordered (bool): Whether lower-ranked cards should be
                 discarded. If `False`, discard any cards (only relevant
                 if `size` is less than `Deck.MAX_SIZE`).
             seed (Seed): Random number generator seed.
@@ -186,7 +186,10 @@ class Deck:
             num_cards_per_suit = self.size // Card.NUM_SUITS
             cards = [Card(suit, rank)
                      for suit in range(Card.NUM_SUITS)
-                     for rank in range(num_cards_per_suit)]
+                     for rank in range(
+                             Card.NUM_RANKS - num_cards_per_suit,
+                             Card.NUM_RANKS,
+                     )]
             return cards
 
         raise NotImplementedError(

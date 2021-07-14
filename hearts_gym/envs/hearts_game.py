@@ -48,7 +48,7 @@ class HeartsGame:
 
     Instead of removing a certain set of cards from the deck when the
     deck size is not divisible by the number of players, we instead
-    remove cards with higher ranks.
+    remove cards with lowest ranks.
 
     This leads us to pick the starting player simply by finding the
     player with the lowest clubs card.
@@ -871,7 +871,10 @@ class HeartsGame:
 
         card_index: Optional[int] = None
         self.leading_player_index = None
-        for rank in range(Card.NUM_RANKS):
+        for rank in range(
+                Card.NUM_RANKS - self._cards_per_suit,
+                Card.NUM_RANKS,
+        ):
             # TODO Maybe use binary search here.
             card = Card(Card.SUIT_CLUB, rank)
             for (player_index, hand) in enumerate(self.hands):
