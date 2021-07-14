@@ -22,7 +22,7 @@ class RuleBasedPolicy(Policy):
             original_obs_space = original_space[HeartsEnv.OBS_KEY]
 
             action_mask_space = original_space[HeartsEnv.ACTION_MASK_KEY]
-            self._len_action_mask = np.prod(action_mask_space.shape)
+            self._action_mask_len = np.prod(action_mask_space.shape)
         else:
             original_obs_space = original_space
 
@@ -30,8 +30,8 @@ class RuleBasedPolicy(Policy):
         self._cards_per_suit = self._num_cards // Card.NUM_SUITS
 
     def _split_obs_and_mask(self, obs_batch):
-        action_mask = obs_batch[:, :self._len_action_mask]
-        sans_action_mask = obs_batch[:, self._len_action_mask:]
+        action_mask = obs_batch[:, :self._action_mask_len]
+        sans_action_mask = obs_batch[:, self._action_mask_len:]
         return sans_action_mask, action_mask
 
     def _index_to_card(self, index):

@@ -45,11 +45,11 @@ def _split_input_dict(
     action_mask = input_dict['obs'][HeartsEnv.ACTION_MASK_KEY]
     # FIXME allow ACTION_MASK_KEY to be placed anywhere, not just at
     # start (get start index)
-    len_action_mask = action_mask.shape[-1]
+    action_mask_len = action_mask.shape[-1]
 
     # The action mask is at the front as the DictFlatteningProcessor
     # sorts its dictionary's items.
-    sans_action_mask = input_dict['obs_flat'][:, len_action_mask:]
+    sans_action_mask = input_dict['obs_flat'][:, action_mask_len:]
     input_dict['obs_flat'] = sans_action_mask
     return input_dict, action_mask
 

@@ -51,7 +51,7 @@ class RandomPolicy(Policy):
         if mask_actions:
             original_space = self.observation_space.original_space
             action_mask_space = original_space[HeartsEnv.ACTION_MASK_KEY]
-            self._len_action_mask = np.prod(action_mask_space.shape)
+            self._action_mask_len = np.prod(action_mask_space.shape)
 
     def _split_obs_and_mask(
             self,
@@ -68,8 +68,8 @@ class RandomPolicy(Policy):
             TensorType: Batch of observations without action masks.
             TensorType: Batch of action masks.
         """
-        action_mask = obs_batch[:, :self._len_action_mask]
-        sans_action_mask = obs_batch[:, self._len_action_mask:]
+        action_mask = obs_batch[:, :self._action_mask_len]
+        sans_action_mask = obs_batch[:, self._action_mask_len:]
         return sans_action_mask, action_mask
 
     @override(Policy)
