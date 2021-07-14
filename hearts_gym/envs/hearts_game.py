@@ -13,6 +13,7 @@ References:
 """
 
 import bisect
+import itertools
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
@@ -47,12 +48,20 @@ class HeartsGame:
     In addition and due to that, currently, there is no implementation
     for discarding ("passing") cards at the start of each game.
 
-    Instead of removing a certain set of cards from the deck when the
-    deck size is not divisible by the number of players, we instead
-    remove cards with lowest ranks.
+    When the deck size is 52 and not divisible by the number of players,
+    remove as many of the following cards as necessary (and in that
+    order):
+    - two of clubs
+    - two of diamonds
+    - three of clubs
+    - two of spades
+    If the deck size is any other value, instead remove cards with the
+    lowest ranks from the suits in the order given by
+    `self.REMOVE_SUIT_ORDER` until the desired size is reached.
 
-    This leads us to pick the starting player simply by finding the
-    player with the lowest clubs card.
+    We pick the starting player simply by finding the player with the
+    lowest clubs card. This rule is not sufficiently specified in
+    Morehead (2001).
     """
 
     NUM_GENERAL_STATES = 1
@@ -69,6 +78,25 @@ class HeartsGame:
     # handle 2 to 8 players without modification.
     MIN_NUM_PLAYERS = 3
     MAX_NUM_PLAYERS = 6
+
+    REMOVE_CARDS = [
+        Card(Card.SUIT_CLUB, Card.RANKS.index('2')),
+        Card(Card.SUIT_DIAMOND, Card.RANKS.index('2')),
+        Card(Card.SUIT_CLUB, Card.RANKS.index('3')),
+        Card(Card.SUIT_SPADE, Card.RANKS.index('2')),
+    ]
+    """Cards to remove from a standard deck according to the
+    implemented rules.
+    """
+    REMOVE_SUIT_ORDER = [
+        Card.SUIT_CLUB,
+        Card.SUIT_DIAMOND,
+        Card.SUIT_SPADE,
+        Card.SUIT_HEART,
+    ]
+    """In which order of suits to remove lowest-ranked cards if not
+    using a standard 52-card deck.
+    """
 
     def __init__(
             self,
@@ -88,8 +116,6 @@ class HeartsGame:
             f'number of players must be between {self.MIN_NUM_PLAYERS} and '
             f'{self.MAX_NUM_PLAYERS} inclusively'
         )
-        assert deck_size % Card.NUM_SUITS == 0, \
-            'deck size must be divisible by ' + str(Card.NUM_SUITS)
 
         # We have maximally this many cards on hand.
         self.max_num_cards_on_hand = deck_size // num_players
@@ -109,10 +135,11 @@ class HeartsGame:
         self.num_states = \
             self.NUM_GENERAL_STATES + 3 * self.num_players
 
-        self.deck = Deck(deck_size, build_ordered=True, seed=seed)
-        # We don't allow decks that don't have the same amount of cards
-        # per suit, so this works for all suits.
-        self._cards_per_suit = deck_size // Card.NUM_SUITS
+        self.deck = Deck(Deck.MAX_SIZE, build_ordered=True, seed=seed)
+        deck_size, removed_cards = self._remove_cards(deck_size, num_players)
+
+        self.max_penalty = \
+            self.MAX_PENALTY - sum(map(self.get_penalty, removed_cards))
 
         self.state = np.empty(deck_size, np.int8)
         """The state for each card."""
@@ -125,7 +152,6 @@ class HeartsGame:
         self.penalties: List[int]
         self.collected: List[List[Card]]
 
-        self.max_penalty: int
         self.is_first_trick: bool
         self.leading_hearts_allowed: bool
 
@@ -195,7 +221,11 @@ class HeartsGame:
         Returns:
             int: Index into the card state vector.
         """
-        return card.rank + card.suit * self._cards_per_suit
+        return (
+            card.rank
+            + self._accumulated_cards_per_suit[card.suit]
+            - self._accumulated_cards_per_suit[0]
+        )
 
     def index_to_card(self, index: int) -> Card:
         """Return the card from a given index for the card state vector.
@@ -206,8 +236,12 @@ class HeartsGame:
         Returns:
             Card: Card obtained from the card state vector index.
         """
-        suit = index // self._cards_per_suit
-        rank = index - suit * self._cards_per_suit
+        suit, num_accumulated = next(
+            (index, num_cards)
+            for num_cards in self._accumulated_cards_per_suit
+            if index < num_cards
+        )
+        rank = index - (num_accumulated - self._accumulated_cards_per_suit[0])
         return Card(suit, rank)
 
     def on_table_state(self, player_index: int) -> int:
@@ -383,6 +417,87 @@ class HeartsGame:
                 continue
             return i
         return None
+
+    def _remove_cards(
+            self,
+            deck_size: int,
+            num_players: int,
+    ) -> Tuple[int, List[Card]]:
+        """Permanently remove cards from the game's deck so they match
+        the desired size and number of players, meaning all players get
+        the same amount of cards. Return the size of the remaining deck
+        and the removed cards.
+
+        When the deck size is 52 and not divisible by the number of
+        players, remove as many of the following cards as necessary (and
+        in that order):
+        - two of clubs
+        - two of diamonds
+        - three of clubs
+        - two of spades
+        If the deck size is any other value, instead remove cards with
+        the lowest ranks from the suits in the order given by
+        `self.REMOVE_SUIT_ORDER` until the desired size is reached.
+
+        Args:
+            deck_size (int): Desired size of the deck.
+            num_players (int): Number of players in the game.
+
+        Returns:
+            int: Amount of cards remaining in the deck.
+            List[Card]]: Cards that were removed.
+        """
+        num_removed_cards = deck_size % num_players
+        if deck_size != 52:
+            num_larger_suits = deck_size % Card.NUM_SUITS
+            min_num_cards_per_suit = deck_size // Card.NUM_SUITS
+            smallest_larger_suit = Card.NUM_SUITS - num_larger_suits
+
+            # Cards we remove to reach the desired deck size.
+            removed_cards = [
+                Card(suit, rank)
+                for suit in self.REMOVE_SUIT_ORDER
+                for rank in range(
+                        (
+                            Card.NUM_RANKS
+                            - (
+                                min_num_cards_per_suit
+                                + (suit >= smallest_larger_suit)
+                            )
+                        ),
+                )
+            ]
+
+            # Cards we remove so all players have the same amount.
+            for i in range(num_removed_cards):
+                suit_index = (smallest_larger_suit + i) % Card.NUM_SUITS
+                suit = self.REMOVE_SUIT_ORDER[suit_index]
+                card = Card(
+                    suit,
+                    (
+                        Card.NUM_RANKS
+                        - (
+                            min_num_cards_per_suit
+                            + (suit >= smallest_larger_suit)
+                        )
+                        + (smallest_larger_suit + i) // Card.NUM_SUITS
+                    ),
+                )
+                removed_cards.append(card)
+        else:
+            removed_cards = self.REMOVE_CARDS[:num_removed_cards]
+
+        self.deck.remove(removed_cards)
+        self._cards_per_suit = [
+            Card.NUM_RANKS - sum(
+                1
+                for _ in filter(lambda card: card.suit == suit, removed_cards)
+            )
+            for suit in range(Card.NUM_SUITS)
+        ]
+        self._accumulated_cards_per_suit = \
+            list(itertools.accumulate(self._cards_per_suit))
+        return deck_size - num_removed_cards, removed_cards
 
     @staticmethod
     def _extract_action(
@@ -861,8 +976,6 @@ class HeartsGame:
         self.prev_leading_suit = None
         self.prev_leading_player_index = None
 
-        # FIXME implement proper discarding (remove as many as needed from 2C, 2D, 3C, 2S)
-
         self.collected = [[] for _ in range(self.num_players)]
         self.hands.clear()
         for player_index in range(self.num_players):
@@ -881,7 +994,7 @@ class HeartsGame:
         card_index: Optional[int] = None
         self.leading_player_index = None
         for rank in range(
-                Card.NUM_RANKS - self._cards_per_suit,
+                Card.NUM_RANKS - self._cards_per_suit[Card.SUIT_CLUB],
                 Card.NUM_RANKS,
         ):
             card = Card(Card.SUIT_CLUB, rank)
@@ -903,16 +1016,10 @@ class HeartsGame:
             'please choose a more even player/deck distribution'
         )
 
-        self.remaining_cards = self.deck.take(len(self.deck))
-        assert (
-            self.deck.size % self.num_players != 0
-            or len(self.remaining_cards) == 0
-        ), 'something went wrong during initialization'
+        assert self.deck.size % self.num_players == 0, \
+            'something went wrong during initialization'
         assert len(self.deck) == 0, \
             'deck must be empty at start of game'
-
-        self.max_penalty = \
-            self.MAX_PENALTY - sum(map(self.get_penalty, self.remaining_cards))
 
         self.active_player_index = self.leading_player_index
         assert card_index is not None

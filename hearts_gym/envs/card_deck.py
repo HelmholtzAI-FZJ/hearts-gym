@@ -2,8 +2,9 @@
 Primitive classes for classical card game decks.
 """
 
+import bisect
 import random
-from typing import List
+from typing import List, Union
 
 from hearts_gym.utils.typing import Seed
 
@@ -125,6 +126,15 @@ class Deck:
     ) -> None:
         """Construct a pre-shuffled card deck with a given size.
 
+        If the size is not divisible by the number of suits, meaning
+        that not all suits have the same number of cards, the
+        lowest-ranked cards are removed from the suits
+        - club,
+        - diamond,
+        - heart,
+        - spade,
+        in that order until the desired size is reached.
+
         Args:
             size (int): How many cards should be in the deck.
             build_ordered (bool): Whether lower-ranked cards should be
@@ -137,14 +147,35 @@ class Deck:
 
         self._rng = random.Random(seed)
         self._build_ordered = build_ordered
-        if not build_ordered or size == self.MAX_SIZE:
-            self._all_cards = [
+
+        # This many suits will have one card more than the others
+        # if `build_ordered`.
+        num_larger_suits = size % Card.NUM_SUITS
+        self._divides_evenly = num_larger_suits == 0
+
+        if not build_ordered:
+            self._used_cards = [
                 Card(suit, rank)
                 for suit in range(Card.NUM_SUITS)
                 for rank in range(Card.NUM_RANKS)
             ]
         else:
-            self._divides_evenly = size % Card.NUM_SUITS == 0
+            min_num_cards_per_suit = size // Card.NUM_SUITS
+            smallest_larger_suit = Card.NUM_SUITS - num_larger_suits
+            self._used_cards = [
+                Card(suit, rank)
+                for suit in range(Card.NUM_SUITS)
+                for rank in range(
+                        (
+                            Card.NUM_RANKS
+                            - (
+                                min_num_cards_per_suit
+                                + (suit >= smallest_larger_suit)
+                            )
+                        ),
+                        Card.NUM_RANKS,
+                )
+            ]
 
         self.size = size
         self.reset()
@@ -177,25 +208,8 @@ class Deck:
                 are not shuffled.
         """
         if not self._build_ordered:
-            return self._rng.sample(self._all_cards, self.size)
-
-        if self.size == self.MAX_SIZE:
-            return self._all_cards.copy()
-
-        if self._divides_evenly:
-            num_cards_per_suit = self.size // Card.NUM_SUITS
-            cards = [Card(suit, rank)
-                     for suit in range(Card.NUM_SUITS)
-                     for rank in range(
-                             Card.NUM_RANKS - num_cards_per_suit,
-                             Card.NUM_RANKS,
-                     )]
-            return cards
-
-        raise NotImplementedError(
-            'ordered build with varying number of cards per suit '
-            'not supported yet'
-        )
+            return self._rng.sample(self._used_cards, self.size)
+        return self._used_cards.copy()
 
     def shuffle_deck(self) -> None:
         """Shuffle the deck."""
@@ -213,3 +227,27 @@ class Deck:
         cards = self._deck[:n]
         del self._deck[:n]
         return cards
+
+    def remove(self, cards: Union[List[Card], Card]) -> None:
+        """Permanently remove the given cards from the deck.
+
+        Permanently means that the cards will not re-appear after
+        resetting the deck. Cards to remove that are already not in the
+        deck are ignored.
+
+        Args:
+            cards (Union[List[Card], Card]): Cards to permanently remove
+                from the deck.
+        """
+        if not isinstance(cards, list):
+            cards = [cards]
+
+        for card in cards:
+            remove_index = bisect.bisect_left(self._used_cards, card)
+            if (
+                    remove_index >= len(self._used_cards)
+                    or self._used_cards[remove_index] != card
+            ):
+                continue
+            del self._used_cards[remove_index]
+            self.size -= 1
