@@ -52,6 +52,8 @@ class RandomPolicy(Policy):
             original_space = self.observation_space.original_space
             action_mask_space = original_space[HeartsEnv.ACTION_MASK_KEY]
             self._action_mask_len = np.prod(action_mask_space.shape)
+        else:
+            self._action_mask_len = 0
 
     def _split_obs_and_mask(
             self,
@@ -108,17 +110,16 @@ class RandomPolicy(Policy):
 
         if self._mask_actions:
             _, action_masks = self._split_obs_and_mask(obs_batch)
-            actions = []
+            actions = np.empty(len(action_masks))
             # possible_actions = np.arange(action_masks.shape[-1])
             # Currently not possible to sample from masked arrays, so we
             # can't vectorize this.
-            for action_mask in action_masks:
+            for (i, action_mask) in enumerate(action_masks):
                 # legal = possible_actions[action_mask == 1]
                 # Could use np.argwhere(...).ravel()
                 legal = np.argwhere(action_mask == 1).ravel()
                 choice = self._rng.choice(legal)
-                actions.append(choice)
-            actions = np.array(actions)
+                actions[i] = choice
         else:
             # TODO Could calculate perfectly so we never take illegal actions.
             on_hand_indices = obs_batch == HeartsEnv.STATE_ON_HAND
