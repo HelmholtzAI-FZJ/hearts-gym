@@ -85,7 +85,7 @@ class HeartsGame:
         Card(Card.SUIT_CLUB, Card.RANKS.index('3')),
         Card(Card.SUIT_SPADE, Card.RANKS.index('2')),
     ]
-    """Cards to remove from a standard deck according to the
+    """Cards to remove from a standard 52-card deck according to the
     implemented rules.
     """
     REMOVE_SUIT_ORDER = [
