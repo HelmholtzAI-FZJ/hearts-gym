@@ -45,12 +45,12 @@ played.
 
 #### Card States
 
-| Name                                             | Amount                  | Description                                                     |
-|--------------------------------------------------|-------------------------|-----------------------------------------------------------------|
-| `HeartsEnv.STATE_UNKNOWN`                        | 1                       | Has not been seen.                                              |
-| `HeartsEnv.STATE_ON_HAND`                        | 1                       | Is on the player's hand.                                        |
-| `HeartsEnv.on_table_state(player_index_offset)`  | `HeartsEnv.num_players` | Was put on the table by the player with the given index offset. |
-| `HeartsEnv.collected_state(player_index_offset)` | `HeartsEnv.num_players` | Was collected by the player with the given index offset.        |
+| Name                                                          | Amount                  | Description                                                     |
+|---------------------------------------------------------------|-------------------------|-----------------------------------------------------------------|
+| `HeartsEnv.STATE_UNKNOWN`                                     | 1                       | Has not been seen.                                              |
+| `HeartsEnv.STATE_ON_HAND`                                     | 1                       | Is on the player's hand.                                        |
+| `HeartsEnv.on_table_state(player_index_offset)`               | `HeartsEnv.num_players` | Was put on the table by the player with the given index offset. |
+| `HeartsEnv.collected_state(player_index_offset, num_players)` | `HeartsEnv.num_players` | Was collected by the player with the given index offset.        |
 
 #### Index Offsets
 

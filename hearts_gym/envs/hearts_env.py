@@ -192,9 +192,10 @@ class HeartsEnv(MultiAgentEnv):
         """
         return HeartsEnv.NUM_GENERAL_OBSERVATION_STATES + player_index_offsets
 
+    @staticmethod
     def collected_state(
-            self,
             player_index_offsets: Union[int, np.ndarray],
+            num_players: int,
     ) -> Union[int, np.ndarray]:
         """Return the states for cards collected (picked up by winning a
         trick) by the players with the given index offsets from a
@@ -208,14 +209,17 @@ class HeartsEnv(MultiAgentEnv):
             player_index_offsets (Union[int, np.ndarray]): Index offsets
                 with relation to the agent of the players that have
                 collected cards.
+            num_players (int): Amount of players in the game.
 
         Returns:
             Union[int, np.ndarray]: States for cards collected by the
                 given players.
         """
-        return (self.NUM_GENERAL_OBSERVATION_STATES
-                + self.game.num_players
-                + player_index_offsets)
+        return (
+            HeartsEnv.NUM_GENERAL_OBSERVATION_STATES
+            + num_players
+            + player_index_offsets
+        )
 
     @staticmethod
     def get_offset_indices(
@@ -312,6 +316,7 @@ class HeartsEnv(MultiAgentEnv):
                 player_index,
                 self.game.num_players,
             ),
+            self.game.num_players,
         )
         cards_state[in_own_hand_indices] = self.STATE_ON_HAND
         if self.game.STATE_UNKNOWN != self.STATE_UNKNOWN:
