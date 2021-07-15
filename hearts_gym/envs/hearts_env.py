@@ -110,6 +110,9 @@ class HeartsEnv(MultiAgentEnv):
         self.num_observation_states = \
             self.NUM_GENERAL_OBSERVATION_STATES + self.game.num_players * 2
 
+        # It's important that all other keys in the dictionary are
+        # ordered below these ones. Otherwise the model and policies
+        # will act up.
         obs_space = {
             # The whole deck with possible individual states as
             # described above.
@@ -129,10 +132,9 @@ class HeartsEnv(MultiAgentEnv):
             'leading_hearts_allowed': spaces.Discrete(2),
         }
         if mask_actions:
+            # Same as above, all other keys in the dictionary must be
+            # ordered below these ones.
             obs_space = {self.OBS_KEY: spaces.Dict(obs_space)}
-            # It's important that all other keys in the dictionary are
-            # ordered below this. Otherwise the model and policies will
-            # act up.
             obs_space[self.ACTION_MASK_KEY] = spaces.Box(
                 low=0,
                 high=1,
