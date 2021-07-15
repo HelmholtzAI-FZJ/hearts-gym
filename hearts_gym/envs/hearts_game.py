@@ -418,6 +418,82 @@ class HeartsGame:
             return i
         return None
 
+    @staticmethod
+    def _removed_for_deck_size(deck_size: int) -> List[Card]:
+        """Return the cards that should be removed to reach the desired
+        deck size.
+
+        Args:
+            deck_size (int): Deck size to reach by removing cards from a
+                standard 52-card deck.
+
+        Returns:
+            List[Card]: Cards to remove to reach the desired size.
+        """
+        if deck_size == 52:
+            return []
+
+        num_larger_suits = deck_size % Card.NUM_SUITS
+        min_num_cards_per_suit = deck_size // Card.NUM_SUITS
+        smallest_larger_suit = Card.NUM_SUITS - num_larger_suits
+
+        removed_cards = [
+            Card(suit, rank)
+            for suit in HeartsGame.REMOVE_SUIT_ORDER
+            for rank in range(
+                    (
+                        Card.NUM_RANKS
+                        - (
+                            min_num_cards_per_suit
+                            + (suit >= smallest_larger_suit)
+                        )
+                    ),
+            )
+        ]
+        return removed_cards
+
+    @staticmethod
+    def _removed_for_num_players(
+            deck_size: int,
+            num_players: int,
+    ) -> List[Card]:
+        """Return the cards that should be removed so all players get
+        the same amount of cards.
+
+        Args:
+            deck_size (int): Size of the deck to adjust.
+            num_players (int): Number of players in the game.
+
+        Returns:
+            List[Card]: Cards to remove so the number of cards is
+                divisible by the number of players.
+        """
+        num_removed_cards = deck_size % num_players
+        if deck_size == 52:
+            return HeartsGame.REMOVE_CARDS[:num_removed_cards]
+
+        num_larger_suits = deck_size % Card.NUM_SUITS
+        min_num_cards_per_suit = deck_size // Card.NUM_SUITS
+        smallest_larger_suit = Card.NUM_SUITS - num_larger_suits
+
+        removed_cards = []
+        for i in range(num_removed_cards):
+            suit_index = (smallest_larger_suit + i) % Card.NUM_SUITS
+            suit = HeartsGame.REMOVE_SUIT_ORDER[suit_index]
+            card = Card(
+                suit,
+                (
+                    Card.NUM_RANKS
+                    - (
+                        min_num_cards_per_suit
+                        + (suit >= smallest_larger_suit)
+                    )
+                    + (smallest_larger_suit + i) // Card.NUM_SUITS
+                ),
+            )
+            removed_cards.append(card)
+        return removed_cards
+
     def _remove_cards(
             self,
             deck_size: int,
@@ -447,45 +523,13 @@ class HeartsGame:
             int: Amount of cards remaining in the deck.
             List[Card]]: Cards that were removed.
         """
-        num_removed_cards = deck_size % num_players
-        if deck_size != 52:
-            num_larger_suits = deck_size % Card.NUM_SUITS
-            min_num_cards_per_suit = deck_size // Card.NUM_SUITS
-            smallest_larger_suit = Card.NUM_SUITS - num_larger_suits
+        # Cards we remove to reach the desired deck size.
+        removed_cards = self._removed_for_deck_size(deck_size)
 
-            # Cards we remove to reach the desired deck size.
-            removed_cards = [
-                Card(suit, rank)
-                for suit in self.REMOVE_SUIT_ORDER
-                for rank in range(
-                        (
-                            Card.NUM_RANKS
-                            - (
-                                min_num_cards_per_suit
-                                + (suit >= smallest_larger_suit)
-                            )
-                        ),
-                )
-            ]
-
-            # Cards we remove so all players have the same amount.
-            for i in range(num_removed_cards):
-                suit_index = (smallest_larger_suit + i) % Card.NUM_SUITS
-                suit = self.REMOVE_SUIT_ORDER[suit_index]
-                card = Card(
-                    suit,
-                    (
-                        Card.NUM_RANKS
-                        - (
-                            min_num_cards_per_suit
-                            + (suit >= smallest_larger_suit)
-                        )
-                        + (smallest_larger_suit + i) // Card.NUM_SUITS
-                    ),
-                )
-                removed_cards.append(card)
-        else:
-            removed_cards = self.REMOVE_CARDS[:num_removed_cards]
+        # Cards we remove so all players have the same amount.
+        player_removed_cards = self._removed_for_num_players(
+            deck_size, num_players)
+        removed_cards.extend(player_removed_cards)
 
         self.deck.remove(removed_cards)
         self._cards_per_suit = [
@@ -497,7 +541,7 @@ class HeartsGame:
         ]
         self._accumulated_cards_per_suit = \
             list(itertools.accumulate(self._cards_per_suit))
-        return deck_size - num_removed_cards, removed_cards
+        return deck_size - len(player_removed_cards), removed_cards
 
     @staticmethod
     def _extract_action(
