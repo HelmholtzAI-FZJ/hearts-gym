@@ -13,6 +13,9 @@ An multi-agent environment to train agents on playing the
 Also includes a client-server architecture to remotely evaluate local
 agents.
 
+Finally, any number of hard-coded baseline agents may be implemented
+with ease.
+
 The rules are mostly implemented as specified by the modern rules from
 Morehead (2001) (ISBN: 9780451204844). For a more detailed description
 of the rules and differences from the original, execute the following:
@@ -219,6 +222,18 @@ default values can be found at the following locations:
 | `config`                    | [RLlib Training](https://docs.ray.io/en/master/rllib-training.html#common-parameters)                        | `ray/rllib/agents/trainer.py`                                                    |
 | Algorithm-specific `config` | [RLlib Algorithms](https://docs.ray.io/en/master/rllib-algorithms.html) (bottom of each algorithm's section) | `ray/rllib/agents/<algo>/<algo>.py` (replace `<algo>` with the algorithm's name) |
 | `stop_config`               | [Tune Guide](https://docs.ray.io/en/latest/tune/user-guide.html#stopping-trials)                             | `ray/python/ray/tune/tune.py`                                                    |
+
+### Rule-based Agents
+
+There is no pre-existing rule-based agent; the default one may be
+implemented in the file
+`hearts_gym/policies/rule_based_policy_impl.py` by implementing the
+`compute_action` method. It is available under the policy ID
+"rulebased" by default.
+
+For more information on this topic including what to look out for and
+how to implement multiple rule-based agents, refer to
+[`docs/rule_based_policy.md`](./rule_based_policy.md)
 
 ### Development
 
