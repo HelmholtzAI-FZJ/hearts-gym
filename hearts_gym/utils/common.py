@@ -38,6 +38,7 @@ __all__ = [
     'DEFAULT_FRAMEWORK',
     'parse_bool',
     'default_policies',
+    'create_custom_rulebased_policies',
     'fix_ray_shutdown',
     'get_registered_env',
     'register_model',
@@ -121,6 +122,38 @@ def default_policies(
             act_space,
             {'mask_actions': mask_actions},
         ),
+    }
+
+
+def create_custom_rulebased_policies(
+        env_name: str,
+        env_config: EnvConfigDict,
+        custom_rulebased_policies: Dict[PolicyID, type],
+) -> Dict[PolicyID, Tuple[type, Space, Space, Dict[str, Any]]]:
+    """Return a correctly configured dictionary of the default policies
+    to be used in a configuration.
+
+    Args:
+        env_name (str): Name of the environment the policies will
+            act in.
+        env_config (EnvConfigDict): Configuration of the environment the
+            policies will act in.
+        learned_policy_id (PolicyID): ID of the learned policy.
+    """
+    from hearts_gym import HeartsEnv
+    mask_actions = env_config.get(
+        'mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT)
+    obs_space, act_space = get_spaces(env_name, env_config)
+
+    from hearts_gym.policies import RuleBasedPolicy
+    return {
+        policy_id: (
+            RuleBasedPolicy,
+            obs_space,
+            act_space,
+            {'mask_actions': mask_actions, 'policy_impl_cls': policy_impl_cls},
+        )
+        for (policy_id, policy_impl_cls) in custom_rulebased_policies.items()
     }
 
 

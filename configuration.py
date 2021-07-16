@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Dict, Optional
 
 from ray import tune
 
@@ -26,6 +26,13 @@ and convenience.
 
 # "tf", "torch", or "jax", whichever is available (in that order).
 framework: str = utils.DEFAULT_FRAMEWORK
+
+custom_rulebased_policies: Dict[str, type] = {}
+"""Dictionary of custom rule-based policies.
+
+Mapping from policy IDs to classes (not class instances!) implementing
+`hearts_gym.policies.deterministic_policy_impl.DeterministicPolicyImpl`.
+"""
 
 
 # Environment config
@@ -116,6 +123,11 @@ config = {
                 RANDOM_POLICY_ID,
                 RULEBASED_POLICY_ID,
                 random_policy_seed,
+            ),
+            **utils.create_custom_rulebased_policies(
+                ENV_NAME,
+                env_config,
+                custom_rulebased_policies,
             ),
         },
         'policy_mapping_fn': policy_mapping_fn,
