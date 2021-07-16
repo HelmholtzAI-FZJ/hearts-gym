@@ -49,7 +49,8 @@ class RuleBasedPolicy(Policy):
         """
         super().__init__(*args, **kwargs)
 
-        mask_actions = self.config.get('mask_actions', True)
+        mask_actions = self.config.get(
+            'mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT)
         self._mask_actions = mask_actions
         policy_impl_cls = self.config.get(
             'policy_impl_cls', RuleBasedPolicyImpl)

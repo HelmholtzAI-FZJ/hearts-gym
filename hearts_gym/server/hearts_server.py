@@ -94,7 +94,7 @@ class HeartsServer(TCPServer):
             num_players: int = 4,
             deck_size: int = 52,
             game: Optional[HeartsGame] = None,
-            mask_actions: bool = True,
+            mask_actions: bool = HeartsEnv.MASK_ACTIONS_DEFAULT,
             seed: GymSeed = None,
             num_parallel_games: int = 1024,
             num_procs: int = utils.get_num_cpus() - 1,

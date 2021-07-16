@@ -46,6 +46,8 @@ class HeartsEnv(MultiAgentEnv):
     multi-agent environments.
     """
 
+    MASK_ACTIONS_DEFAULT = True
+
     NUM_GENERAL_OBSERVATION_STATES = 2
     """Amount of states that do not refer to a specific player."""
 
@@ -72,7 +74,7 @@ class HeartsEnv(MultiAgentEnv):
             num_players: int = 4,
             deck_size: int = 52,
             game: Optional[HeartsGame] = None,
-            mask_actions: bool = True,
+            mask_actions: bool = MASK_ACTIONS_DEFAULT,
             seed: GymSeed = 0,
     ) -> None:
         """Construct a Hearts environment with a strong random seed.

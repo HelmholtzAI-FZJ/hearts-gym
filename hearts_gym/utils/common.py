@@ -98,7 +98,9 @@ def default_policies(
         random_policy_seed (Seed): Random number generator seed for the
             random policy.
     """
-    mask_actions = env_config.get('mask_actions', True)
+    from hearts_gym import HeartsEnv
+    mask_actions = env_config.get(
+        'mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT)
     obs_space, act_space = get_spaces(env_name, env_config)
 
     from hearts_gym.policies import RandomPolicy, RuleBasedPolicy
@@ -374,7 +376,8 @@ def maybe_set_up_masked_actions_model(
         config (TrainerConfigDict): Training configuration.
     """
     env_config: EnvConfigDict = config.get('env_config', {})
-    if not env_config.get('mask_actions', False):
+    from hearts_gym import HeartsEnv
+    if not env_config.get('mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT):
         return
 
     register_masked_actions_models(config.get('framework', 'tf'))

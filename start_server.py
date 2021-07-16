@@ -5,7 +5,7 @@ Start a server for remote agent evaluation.
 import argparse
 import logging
 
-from hearts_gym import utils
+from hearts_gym import HeartsEnv, utils
 from hearts_gym.server.hearts_server import (
     HeartsServer,
     HeartsRequestHandler,
@@ -31,7 +31,7 @@ def parse_args():
     )
     parser.add_argument(
         '--mask_actions',
-        default=True,
+        default=HeartsEnv.MASK_ACTIONS_DEFAULT,
         type=utils.parse_bool,
         help='Whether to apply action masking.',
     )

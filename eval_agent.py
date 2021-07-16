@@ -401,7 +401,8 @@ def main() -> None:
         server_utils.send_ok(client)
         remove_action_mask = (
             mask_actions
-            and not config.get('env_config', {}).get('mask_actions', True)
+            and not config.get('env_config', {}).get(
+                'mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT)
         )
 
         num_iters = 0
