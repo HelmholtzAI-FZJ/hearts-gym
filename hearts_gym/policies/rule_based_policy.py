@@ -61,7 +61,7 @@ class RuleBasedPolicy(Policy):
             original_obs_space = original_space[HeartsEnv.OBS_KEY]
 
             action_mask_space = original_space[HeartsEnv.ACTION_MASK_KEY]
-            self._action_mask_len = np.prod(action_mask_space.shape)
+            self._action_mask_len = np.prod(action_mask_space.shape).item()
         else:
             original_obs_space = original_space
             self._action_mask_len = 0

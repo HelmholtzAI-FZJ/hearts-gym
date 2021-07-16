@@ -51,7 +51,7 @@ class RandomPolicy(Policy):
         if mask_actions:
             original_space = self.observation_space.original_space
             action_mask_space = original_space[HeartsEnv.ACTION_MASK_KEY]
-            self._action_mask_len = np.prod(action_mask_space.shape)
+            self._action_mask_len = np.prod(action_mask_space.shape).item()
         else:
             self._action_mask_len = 0
 

@@ -46,7 +46,7 @@ class MockGame:
                 state vector starts.
         """
         self._card_states_start = card_states_start_index
-        self.deck_size = np.prod(original_obs_space['cards'].shape)
+        self.deck_size = np.prod(original_obs_space['cards'].shape).item()
         self.num_players = (
             original_obs_space['cards'].high
             + 1
