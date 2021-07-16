@@ -110,7 +110,10 @@ class RandomPolicy(Policy):
 
         if self._mask_actions:
             _, action_masks = self._split_obs_and_mask(obs_batch)
-            actions = np.empty(len(action_masks))
+            actions = np.empty(
+                len(action_masks),
+                dtype=self.action_space.dtype,
+            )
             # possible_actions = np.arange(action_masks.shape[-1])
             # Currently not possible to sample from masked arrays, so we
             # can't vectorize this.
