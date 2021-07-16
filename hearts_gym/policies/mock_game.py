@@ -48,9 +48,9 @@ class MockGame:
         self._card_states_start = card_states_start_index
         self.deck_size = np.prod(original_obs_space['cards'].shape).item()
         self.num_players = (
-            original_obs_space['cards'].high
+            original_obs_space['cards'].high.item(0)
             + 1
-            - original_obs_space['cards'].low
+            - original_obs_space['cards'].low.item(0)
             - HeartsEnv.NUM_GENERAL_OBSERVATION_STATES
         ) // 2
 
