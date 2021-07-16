@@ -20,6 +20,7 @@ from ray.rllib.utils.typing import (
 
 from hearts_gym.envs import HeartsEnv
 from hearts_gym.utils.typing import Action
+from .deterministic_policy_impl import DeterministicPolicyImpl
 from .mock_game import MockGame
 from .rule_based_policy_impl import RuleBasedPolicyImpl
 
@@ -36,7 +37,8 @@ class RuleBasedPolicy(Policy):
 
         The following policy configuration options are used:
         - "policy_impl_cls": Rule-based policy implementation to use.
-          Default is `RuleBasedPolicyImpl`.
+          Must subclass `DeterministicPolicyImpl`. Default
+          is `RuleBasedPolicyImpl`.
         - "mask_actions": Whether action masking is enabled.
           Default is `True`.
 
@@ -54,6 +56,10 @@ class RuleBasedPolicy(Policy):
         self._mask_actions = mask_actions
         policy_impl_cls = self.config.get(
             'policy_impl_cls', RuleBasedPolicyImpl)
+        assert type(policy_impl_cls) == type, \
+            '`policy_impl_cls` must not be an instance, but the class itself'
+        assert issubclass(policy_impl_cls, DeterministicPolicyImpl), \
+            '`policy_impl_cls` must subclass `DeterministicPolicyImpl`'
 
         # Set up helper variables
         original_space = self.observation_space.original_space
