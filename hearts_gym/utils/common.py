@@ -87,11 +87,14 @@ def default_policies(
         rulebased_policy_id: PolicyID,
         random_policy_seed: Seed,
 ) -> Dict[PolicyID, Tuple[Optional[type], Space, Space, Dict[str, Any]]]:
-    """Add the default policies to the given configuration, modifying
-    it in-place.
+    """Return a correctly configured dictionary of the default policies
+    to be used in a configuration.
 
     Args:
-        config (TrainerConfigDict): Configuration to add the policies to.
+        env_name (str): Name of the environment the policies will
+            act in.
+        env_config (EnvConfigDict): Configuration of the environment the
+            policies will act in.
         learned_policy_id (PolicyID): ID of the learned policy.
         random_policy_id (PolicyID): ID of the random policy.
         rulebased_policy_id (PolicyID): ID of the rule-based policy.
