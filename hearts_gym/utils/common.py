@@ -8,7 +8,9 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from gym.spaces import Space
 import ray
-from ray.rllib.models import ModelCatalog
+from ray.rllib.agents.trainer import COMMON_CONFIG
+from ray.rllib.agents.dqn.dqn import DEFAULT_CONFIG as DQN_DEFAULT_CONFIG
+from ray.rllib.models import MODEL_DEFAULTS, ModelCatalog
 from ray.rllib.models.preprocessors import get_preprocessor
 from ray.rllib.utils.framework import (
     try_import_jax,
@@ -31,8 +33,6 @@ from ray.tune.registry import (
 from ray.tune.trainable import Trainable
 
 from hearts_gym.utils.typing import Seed
-
-# FIXME take default config options from RLlib (e.g. COMMON_CONFIG, MODEL_DEFAULTS, ...)
 
 __all__ = [
     'DEFAULT_FRAMEWORK',
@@ -216,10 +216,12 @@ def get_default_model(
     Returns:
         type: The default model class for the given configuration.
     """
-    env_config: EnvConfigDict = config.get('env_config', {})
+    env_config: EnvConfigDict = config.get(
+        'env_config', COMMON_CONFIG['env_config'])
     obs_space = get_preprocessed_obs_space(config['env'], env_config)
 
-    model_config: ModelConfigDict = config.get('model', {})
+    model_config: ModelConfigDict = config.get(
+        'model', COMMON_CONFIG['model'])
     model_cls = preprocessed_get_default_model(
         obs_space, model_config, framework)
     return model_cls
@@ -244,11 +246,11 @@ def _adjust_dqn_config(config: TrainerConfigDict) -> None:
     Args:
         config (TrainerConfigDict): Training configuration.
     """
-    prev_hiddens = config.get('hiddens', [256])
+    prev_hiddens = config.get('hiddens', DQN_DEFAULT_CONFIG['hiddens'])
     if prev_hiddens:
         print(f'Warning: setting `config["hiddens"] = [] '
               f'(was {prev_hiddens})`')
-    prev_dueling = config.get('dueling', True)
+    prev_dueling = config.get('dueling', DQN_DEFAULT_CONFIG['dueling'])
     if prev_dueling:
         print(f'Warning: setting `config["dueling"] = False '
               f'(was {prev_dueling})`')
@@ -271,13 +273,14 @@ def _adjust_other_config_for_action_masking(
         config (TrainerConfigDict): Training configuration.
     """
     model_config: ModelConfigDict = config.setdefault('model', {})
-    framework = config.get('framework', 'tf')
+    framework = config.get('framework', COMMON_CONFIG['framework'])
     masked_actions_model_key = MASKED_ACTIONS_MODEL_KEY
 
     # Validate early because we change some stuff.
     ModelCatalog._validate_config(config=model_config, framework=framework)
 
-    prev_custom_model = model_config.get('custom_model', None)
+    prev_custom_model = model_config.get(
+        'custom_model', MODEL_DEFAULTS['custom_model'])
     if (
             isinstance(prev_custom_model, str)
             and prev_custom_model.startswith(MASKED_ACTIONS_MODEL_KEY)
@@ -285,12 +288,13 @@ def _adjust_other_config_for_action_masking(
         # We already configured this.
         return
 
-    use_lstm = model_config.get('use_lstm', False)
+    use_lstm = model_config.get('use_lstm', MODEL_DEFAULTS['use_lstm'])
     if use_lstm:
         model_config['use_lstm'] = False
         masked_actions_model_key = masked_actions_model_key + '_lstm'
 
-    use_attention = model_config.get('use_attention', False)
+    use_attention = model_config.get(
+        'use_attention', MODEL_DEFAULTS['use_attention'])
     if use_attention:
         # TensorFlow eager mode does not support attention yet.
         assert framework in ['tf', 'torch'], \
@@ -305,7 +309,8 @@ def _adjust_other_config_for_action_masking(
             masked_actions_model_key = 'q_' + masked_actions_model_key
 
     model_config['custom_model'] = masked_actions_model_key
-    custom_model_config = model_config.get('custom_model_config', {})
+    custom_model_config = model_config.get(
+        'custom_model_config', MODEL_DEFAULTS['custom_model_config'])
     model_config['custom_model_config'] = {
         **custom_model_config,
         'model_cls': prev_custom_model,
@@ -375,12 +380,14 @@ def maybe_set_up_masked_actions_model(
             to use.
         config (TrainerConfigDict): Training configuration.
     """
-    env_config: EnvConfigDict = config.get('env_config', {})
+    env_config: EnvConfigDict = config.get(
+        'env_config', COMMON_CONFIG['env_config'])
     from hearts_gym import HeartsEnv
     if not env_config.get('mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT):
         return
 
-    register_masked_actions_models(config.get('framework', 'tf'))
+    register_masked_actions_models(
+        config.get('framework', COMMON_CONFIG['framework']))
 
     _adjust_other_config_for_action_masking(algorithm, config)
 

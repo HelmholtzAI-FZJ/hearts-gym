@@ -7,6 +7,7 @@ from typing import Callable
 
 import ray
 from ray import tune
+from ray.rllib.agents.trainer import COMMON_CONFIG
 from ray.rllib.utils.typing import PolicyID, TrainerConfigDict
 
 import configuration as conf
@@ -45,15 +46,18 @@ def configure_eval(
     """
     eval_config = utils.configure_eval(config)
 
-    env_config = eval_config.get('env_config', {}).copy()
+    env_config = eval_config.get(
+        'env_config', COMMON_CONFIG['env_config']).copy()
     eval_config['env_config'] = env_config
     env_config['seed'] = seed
 
-    multiagent_config = eval_config.get('multiagent', {}).copy()
+    multiagent_config = eval_config.get(
+        'multiagent', COMMON_CONFIG['multiagent']).copy()
     eval_config['multiagent'] = multiagent_config
     multiagent_config['policy_mapping_fn'] = policy_mapping_fn
 
-    policies_config = multiagent_config.get('policies', {}).copy()
+    policies_config = multiagent_config.get(
+        'policies', COMMON_CONFIG['multiagent']['policies']).copy()
     multiagent_config['policies'] = policies_config
     if RANDOM_POLICY_ID in policies_config:
         random_policy = policies_config[RANDOM_POLICY_ID]
@@ -66,7 +70,8 @@ def configure_eval(
             random_policy[:3] + (random_policy_config,) + random_policy[4:]
 
     eval_config['num_gpus'] = (
-        utils.get_num_gpus(eval_config.get('framework', 'tf'))
+        utils.get_num_gpus(eval_config.get(
+            'framework', COMMON_CONFIG['framework']))
         if reset_workers
         else 0
     )

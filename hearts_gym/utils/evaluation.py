@@ -12,6 +12,8 @@ from typing import Any, Callable, Optional, Tuple
 
 import numpy as np
 import ray
+from ray.rllib.agents.trainer import COMMON_CONFIG
+from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.policy.sample_batch import DEFAULT_POLICY_ID
 from ray.rllib.rollout import RolloutSaver
 from ray.rllib.utils.spaces import space_utils
@@ -66,7 +68,8 @@ def configure_eval(
     eval_config = config.copy()
     eval_config['explore'] = False
 
-    multiagent_config = eval_config.get('multiagent', {}).copy()
+    multiagent_config = eval_config.get(
+        'multiagent', COMMON_CONFIG['multiagent']).copy()
     eval_config['multiagent'] = multiagent_config
     multiagent_config['policies_to_train'] = []
 
@@ -91,14 +94,16 @@ def get_initial_state(
             agent policy.
     """
     policy = agent.get_policy(policy_id)
-    model_config = agent.config.get('model', {})
+    model_config = agent.config.get('model', COMMON_CONFIG['model'])
 
     state = policy.get_initial_state()
     if (
             state
-            or not model_config.get('use_attention', False)
+            or not model_config.get(
+                'use_attention', MODEL_DEFAULTS['use_attention'])
             and (
-                model_config.get('custom_model', None) is None
+                model_config.get(
+                    'custom_model', MODEL_DEFAULTS['custom_model']) is None
                 or not model_config.get('custom_model', '').endswith('_attn')
             )
     ):
@@ -120,7 +125,10 @@ def get_initial_state(
         view_req = view_reqs[key]
         state = np.zeros(
             shape=(
-                (model_config.get('attention_memory_inference', 50),)
+                (model_config.get(
+                    'attention_memory_inference',
+                    MODEL_DEFAULTS['attention_memory_inference'],
+                ),)
                 + view_req.space.shape
             ),
             dtype=view_req.space.dtype,
@@ -244,7 +252,7 @@ def compute_actions(self,
 
 
 def _get_num_players(config: TrainerConfigDict) -> int:
-    env_config = config.get('env_config', {})
+    env_config = config.get('env_config', COMMON_CONFIG['env_config'])
     num_players = env_config.get('num_players', 4)
     return num_players
 
@@ -355,9 +363,9 @@ def _eval_unstable(
 
     # TODO use batching for more speed; see `eval_agent.py`
 
-    model_config = eval_config.get('model', {})
+    model_config = eval_config.get('model', COMMON_CONFIG['model_config'])
     make_env = utils.get_registered_env(env_name)
-    env = make_env(eval_config.get('env_config', {}))
+    env = make_env(eval_config.get('env_config', COMMON_CONFIG['env_config']))
 
     for i in range(num_test_games):
         states = get_initial_states(
@@ -383,9 +391,13 @@ def _eval_unstable(
             obs, reward, is_done, info = env.step({agent_id: action})
 
             if (
-                    model_config.get('use_attention', False)
+                    model_config.get(
+                        'use_attention', MODEL_DEFAULTS['use_attention'])
                     or (
-                        model_config.get('custom_model', None) is not None
+                        model_config.get(
+                            'custom_model',
+                            MODEL_DEFAULTS['custom_model'],
+                        ) is not None
                         and model_config.get(
                             'custom_model', '').endswith('_attn')
                     )
