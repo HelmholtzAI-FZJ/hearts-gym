@@ -1,5 +1,5 @@
 """
-A hardcoded Hearts policy implementation that yields deterministic
+A hard-coded Hearts policy implementation that yields deterministic
 actions for each state/observation.
 """
 
@@ -10,7 +10,7 @@ from .mock_game import MockGame
 
 
 class DeterministicPolicyImpl:
-    """A hardcoded Hearts policy implementation that yields
+    """A hard-coded Hearts policy implementation that yields
     deterministic actions for each state/observation.
 
     The policy has access to a mock `game` that is built from the

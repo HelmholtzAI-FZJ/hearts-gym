@@ -1,5 +1,5 @@
 """
-A hardcoded Hearts policy implementation that yields rule-based actions
+A hard-coded Hearts policy implementation that yields rule-based actions
 for each state/observation.
 
 Rule-based in this context means fixed behavior according to pre-defined
