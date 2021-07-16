@@ -19,7 +19,9 @@ from ray.rllib.utils.typing import (
 )
 
 from hearts_gym.envs import HeartsEnv
-from hearts_gym.envs.card_deck import Card
+from hearts_gym.utils.typing import Action
+from .mock_game import MockGame
+from .rule_based_policy_impl import RuleBasedPolicyImpl
 
 
 class RuleBasedPolicy(Policy):
@@ -33,6 +35,8 @@ class RuleBasedPolicy(Policy):
         """Construct a rule-based policy.
 
         The following policy configuration options are used:
+        - "policy_impl_cls": Rule-based policy implementation to use.
+          Default is `RuleBasedPolicyImpl`.
         - "mask_actions": Whether action masking is enabled.
           Default is `True`.
 
@@ -47,11 +51,10 @@ class RuleBasedPolicy(Policy):
 
         mask_actions = self.config.get('mask_actions', True)
         self._mask_actions = mask_actions
+        policy_impl_cls = self.config.get(
+            'policy_impl_cls', RuleBasedPolicyImpl)
 
-        self._setup_variables()
-
-    def _setup_variables(self) -> None:
-        """Set up helper variables."""
+        # Set up helper variables
         original_space = self.observation_space.original_space
 
         if self._mask_actions:
@@ -61,10 +64,10 @@ class RuleBasedPolicy(Policy):
             self._action_mask_len = np.prod(action_mask_space.shape)
         else:
             original_obs_space = original_space
-
-        self._num_cards = np.prod(original_obs_space['cards'].shape)
-        # FIXME not so simple anymore
-        self._cards_per_suit = self._num_cards // Card.NUM_SUITS
+            self._action_mask_len = 0
+        card_states_start = self._action_mask_len
+        self._game = MockGame(original_obs_space, card_states_start)
+        self._policy_impl = policy_impl_cls(self._game)
 
     def _split_obs_and_mask(
             self,
@@ -85,32 +88,19 @@ class RuleBasedPolicy(Policy):
         sans_action_mask = obs_batch[:, self._action_mask_len:]
         return sans_action_mask, action_mask
 
-    def _index_to_card(self, index: int) -> Card:
-        """Return the card from a given index for the
-        observation vector.
+    def _compute_action(
+            self,
+            obs: TensorType,
+    ) -> Action:
+        """Compute the action to take for the given observations.
 
         Args:
-            index (int): Index into the observation vector.
+            obs (TensorType): Observations to compute the action for.
 
         Returns:
-            Card: Card obtained from the observation vector index.
+            Action: Which action to take. Assumed to be deterministic.
         """
-        suit = index // self._cards_per_suit
-        rank = index - suit * self._cards_per_suit
-        return Card(suit, rank)
-
-    def _suit_from_index(self, index: int) -> int:
-        """Return the suit of the card at the given index in the
-        observation vector.
-
-        Args:
-            index (int): Index into the observation vector.
-
-        Returns:
-            int: Suit of the card obtained from the observation
-                vector index.
-        """
-        return index // self._cards_per_suit
+        return self._policy_impl.compute_action(obs)
 
     @override(Policy)
     def compute_actions(
@@ -149,13 +139,25 @@ class RuleBasedPolicy(Policy):
         if isinstance(obs_batch, list):
             obs_batch = np.array(obs_batch)
         if self._mask_actions:
-            obs_batch, action_masks = self._split_obs_and_mask(obs_batch)
-            # You could just disregard the `action_masks` and not treat
-            # this as a special case. Although you do need to keep the
-            # splitting for consistency in the observations!
-            raise NotImplementedError('please implement the rule-based agent')
-        else:
-            raise NotImplementedError('please implement the rule-based agent')
+            obs_batch, _ = self._split_obs_and_mask(obs_batch)
+
+        actions = np.empty(len(obs_batch))
+        for (i, obs) in enumerate(obs_batch):
+            is_done = self._game.recreate_state(obs)
+
+            # Even though we should never be asked to compute actions
+            # for a terminal observation, we catch this case here.
+            if is_done:
+                # We have a terminal observation; no use to calculate
+                # an action.
+                actions[i] = 0
+                continue
+
+            action = self._compute_action(obs)
+            actions[i] = action
+
+        np.expand_dims(actions, 1)
+        return actions, [], {}
 
     @override(Policy)
     def learn_on_batch(self, samples: SampleBatch) -> Dict[str, TensorType]:
