@@ -36,8 +36,8 @@ class HeartsGame:
     - Players may only lead with a hearts card once a heart has been
       played due to not being able to follow suit or when they only have
       hearts on their hand.
-    - Two or more players with equal penalty score obtain the
-      higher ranking.
+    - Two or more players with equal penalty score obtain the higher
+      (i.e. better) ranking.
 
     Each "hand" (terminology in the Wikipedia article for a single game
     from start to finish) is viewed independently; there is no state
@@ -870,7 +870,8 @@ class HeartsGame:
     def compute_rankings(self) -> List[int]:
         """Compute and return the final rankings of the game.
 
-        Players with the same penalty score obtain the higher ranking.
+        Players with the same penalty score obtain the higher (i.e.
+        better) ranking.
 
         Requires the final penalties to be computed (see
         `compute_final_penalties`).
