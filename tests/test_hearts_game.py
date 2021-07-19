@@ -1,6 +1,7 @@
 import random
 import unittest
 
+from hearts_gym.envs.card_deck import Card
 from hearts_gym.envs.hearts_game import HeartsGame
 
 
@@ -194,12 +195,43 @@ class TestCommon(unittest.TestCase):
         print(total_penalties)
         print(total_placements)
 
-    # def test_hand_sorted(self):
-    #     game = HeartsGame(seed=0)
-    #     game.reset()
-    #     hand = [Card(0, 2), Card(3, 2), Card(0, 3), Card(3, 3), Card(2, 4), Card(2, 7), Card(3, 4), Card(3, 8), Card(0, 10), Card(1, 9), Card(3, 10), Card(2, 11), Card(2, 12)]
-    #     sorted_hand = [Card(0, 2), Card(3, 2), Card(0, 3), Card(3, 3), Card(2, 4), Card(2, 7), Card(3, 4), Card(3, 8), Card(0, 10), Card(1, 9), Card(3, 10), Card(2, 11), Card(2, 12)]
-    #     hand.sort()
+    def test_hand_sorted(self):
+        game = HeartsGame(seed=0)
+        game.reset()
+        hand = [
+            Card(0, 2),
+            Card(3, 2),
+            Card(0, 3),
+            Card(3, 3),
+            Card(2, 4),
+            Card(2, 7),
+            Card(3, 4),
+            Card(3, 8),
+            Card(0, 10),
+            Card(1, 9),
+            Card(3, 10),
+            Card(2, 11),
+            Card(2, 12),
+        ]
+        sorted_hand = [
+            Card(0, 2),
+            Card(0, 3),
+            Card(0, 10),
+            Card(1, 9),
+            Card(2, 4),
+            Card(2, 7),
+            Card(2, 11),
+            Card(2, 12),
+            Card(3, 2),
+            Card(3, 3),
+            Card(3, 4),
+            Card(3, 8),
+            Card(3, 10),
+        ]
+        hand.sort()
+        self.assertEqual(len(hand), len(sorted_hand))
+        for (a, b) in zip(hand, sorted_hand):
+            self.assertEqual(a, b)
 
     def test_string(self):
         game = HeartsGame(seed=0)
