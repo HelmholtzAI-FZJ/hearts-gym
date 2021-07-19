@@ -55,13 +55,7 @@ class TestCommon(unittest.TestCase):
         state = game.state
         indices = []
 
-        # Unknown (remaining)
-        for card in game.remaining_cards:
-            card_index = game.card_to_index(card)
-            indices.append(card_index)
-            card_state = state[card_index]
-
-            self.assertEqual(card_state, game.STATE_UNKNOWN)
+        self.assertEqual(len(state), 52)
 
         # Table
         for (i, card) in enumerate(game.table_cards):
