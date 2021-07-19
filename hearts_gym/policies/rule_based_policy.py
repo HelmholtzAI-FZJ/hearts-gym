@@ -147,7 +147,7 @@ class RuleBasedPolicy(Policy):
         if self._mask_actions:
             obs_batch, _ = self._split_obs_and_mask(obs_batch)
 
-        actions = np.empty(len(obs_batch))
+        actions = np.empty(len(obs_batch), dtype=self.action_space.dtype)
         for (i, obs) in enumerate(obs_batch):
             is_done = self._game.recreate_state(obs)
 
