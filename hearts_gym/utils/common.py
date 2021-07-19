@@ -75,7 +75,18 @@ following order:
 MASKED_ACTIONS_MODEL_KEY = 'masked_actions'
 
 
-def parse_bool(string):
+def parse_bool(string: str) -> bool:
+    """Return whether the given string is "True" or "False".
+
+    If the string is neither, raise an error.
+
+    Args:
+        string (str): String to parse for a boolean value.
+
+    Returns:
+        bool: `True` when the string was "True", `False` when the string
+            was "False".
+    """
     assert string == 'False' or string == 'True', \
         'please only use "False" or "True" as boolean arguments.'
     return string != 'False'
