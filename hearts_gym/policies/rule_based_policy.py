@@ -72,8 +72,7 @@ class RuleBasedPolicy(Policy):
         else:
             original_obs_space = original_space
             self._action_mask_len = 0
-        card_states_start = self._action_mask_len
-        self._game = ObservedGame(original_obs_space, card_states_start)
+        self._game = ObservedGame(original_obs_space)
         self._policy_impl = policy_impl_cls(self._game)
 
     def _split_obs_and_mask(

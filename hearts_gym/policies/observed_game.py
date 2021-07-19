@@ -30,22 +30,14 @@ class ObservedGame:
     offset of 0 gives us the position of the observing player itself).
     """
 
-    def __init__(
-            self,
-            original_obs_space: Space,
-            card_states_start_index: int,
-    ) -> None:
+    def __init__(self, original_obs_space: Space) -> None:
         """Construct a new observed game getting observations with the
         given original space (before preprocessing).
 
         Args:
             original_obs_space (Space): Observation space before
                 preprocessing of the observations to process.
-            card_states_start_index (int): At which index in the
-                preprocessed, flattened observation vector the card
-                state vector starts.
         """
-        self._card_states_start = card_states_start_index
         self.deck_size = np.prod(original_obs_space['cards'].shape).item()
         self.num_players = (
             original_obs_space['cards'].high.item(0)
@@ -81,7 +73,6 @@ class ObservedGame:
         Returns:
             Card: Card obtained from the observation vector index.
         """
-        index -= self._card_states_start
         suit, num_accumulated = next(
             (index, num_cards)
             for num_cards in self._accumulated_cards_per_suit
@@ -292,8 +283,7 @@ class ObservedGame:
             len(self.hand)
             == self.deck_size // self.num_players
         )
-        self.leading_hearts_allowed = \
-            obs[self._card_states_start + self.deck_size]
+        self.leading_hearts_allowed = obs[self.deck_size]
 
         self.offset_penalties = [
             sum(map(self.get_penalty, cards))
