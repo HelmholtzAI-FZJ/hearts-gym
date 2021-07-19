@@ -93,14 +93,14 @@ def _assert_same_envs(
         config (TrainerConfigDict): Local configuration.
         server_metadata (Dict[str, Any]): Server configuration metadata.
     """
-    load_env_name = config.get('env', COMMON_CONFIG['env'])
+    load_env_name = utils.get_default(config, 'env', COMMON_CONFIG)
     assert load_env_name == ENV_NAME, (
         f'loaded agent was trained on different environment '
         f'({load_env_name}); please change `ENV_NAME` in `configuration.py` '
         f'if this is fine'
     )
 
-    env_config = config.get('env_config', COMMON_CONFIG['env_config'])
+    env_config = utils.get_default(config, 'env_config', COMMON_CONFIG)
     for attr in ['num_players', 'deck_size']:
         # We just expect these to be set.
         load_attr = env_config.get(attr, None)
@@ -127,8 +127,8 @@ def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
     eval_config = utils.configure_eval(config)
     eval_config['num_workers'] = 0
 
-    multiagent_config = eval_config.get(
-        'multiagent', COMMON_CONFIG['multiagent']).copy()
+    multiagent_config = utils.get_default(
+        eval_config, 'multiagent', COMMON_CONFIG).copy()
     eval_config['multiagent'] = multiagent_config
     multiagent_config['policy_mapping_fn'] = lambda _: LEARNED_POLICY_ID
 
@@ -374,8 +374,11 @@ def main() -> None:
 
             assert (
                 LEARNED_POLICY_ID
-                in config.get('multiagent', COMMON_CONFIG['multiagent']).get(
-                    'policies', COMMON_CONFIG['multiagent']['policies'])
+                in utils.get_default(
+                    utils.get_default(config, 'multiagent', COMMON_CONFIG),
+                    'policies',
+                    COMMON_CONFIG['multiagent'],
+                )
             ), (
                 'cannot find learned policy ID in loaded configuration; '
                 'please configure `LEARNED_POLICY_ID`'
@@ -405,7 +408,7 @@ def main() -> None:
         server_utils.send_ok(client)
         remove_action_mask = (
             mask_actions
-            and not config.get('env_config', COMMON_CONFIG['env_config']).get(
+            and not utils.get_default(config, 'env_config', COMMON_CONFIG).get(
                 'mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT)
         )
 

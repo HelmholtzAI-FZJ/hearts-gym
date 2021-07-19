@@ -37,6 +37,7 @@ from hearts_gym.utils.typing import Seed
 __all__ = [
     'DEFAULT_FRAMEWORK',
     'parse_bool',
+    'get_default',
     'default_policies',
     'create_custom_rulebased_policies',
     'fix_ray_shutdown',
@@ -78,6 +79,28 @@ def parse_bool(string):
     assert string == 'False' or string == 'True', \
         'please only use "False" or "True" as boolean arguments.'
     return string != 'False'
+
+
+def get_default(query_dict: Dict, key: Any, default_dict: Dict) -> Any:
+    """Return the entry for the given key in the given dictionary or the
+    entry in `default_dict` if `query_dict` does not have an entry under
+    `key`.
+
+    `default_dict` is expected to contain `key`.
+
+    Args:
+        query_dict (Dict): Dictionary to get the value under the given
+            key from.
+        key (Any): Key to query.
+        default_dict (Dict): Dictionary containing a default value under
+            the given key that is returned if `query_dict` does not have
+            an entry for it.
+
+    Returns:
+        Any: Queried value obtained from `query_dict` or `default_dict`,
+            depending on inclusion of `key`.
+    """
+    return query_dict.get(key, default_dict[key])
 
 
 def default_policies(
@@ -252,12 +275,11 @@ def get_default_model(
     Returns:
         type: The default model class for the given configuration.
     """
-    env_config: EnvConfigDict = config.get(
-        'env_config', COMMON_CONFIG['env_config'])
+    env_config: EnvConfigDict = get_default(
+        config, 'env_config', COMMON_CONFIG)
     obs_space = get_preprocessed_obs_space(config['env'], env_config)
 
-    model_config: ModelConfigDict = config.get(
-        'model', COMMON_CONFIG['model'])
+    model_config: ModelConfigDict = get_default(config, 'model', COMMON_CONFIG)
     model_cls = preprocessed_get_default_model(
         obs_space, model_config, framework)
     return model_cls
@@ -282,11 +304,11 @@ def _adjust_dqn_config(config: TrainerConfigDict) -> None:
     Args:
         config (TrainerConfigDict): Training configuration.
     """
-    prev_hiddens = config.get('hiddens', DQN_DEFAULT_CONFIG['hiddens'])
+    prev_hiddens = get_default(config, 'hiddens', DQN_DEFAULT_CONFIG)
     if prev_hiddens:
         print(f'Warning: setting `config["hiddens"] = [] '
               f'(was {prev_hiddens})`')
-    prev_dueling = config.get('dueling', DQN_DEFAULT_CONFIG['dueling'])
+    prev_dueling = get_default(config, 'dueling', DQN_DEFAULT_CONFIG)
     if prev_dueling:
         print(f'Warning: setting `config["dueling"] = False '
               f'(was {prev_dueling})`')
@@ -309,14 +331,14 @@ def _adjust_other_config_for_action_masking(
         config (TrainerConfigDict): Training configuration.
     """
     model_config: ModelConfigDict = config.setdefault('model', {})
-    framework = config.get('framework', COMMON_CONFIG['framework'])
+    framework = get_default(config, 'framework', COMMON_CONFIG)
     masked_actions_model_key = MASKED_ACTIONS_MODEL_KEY
 
     # Validate early because we change some stuff.
     ModelCatalog._validate_config(config=model_config, framework=framework)
 
-    prev_custom_model = model_config.get(
-        'custom_model', MODEL_DEFAULTS['custom_model'])
+    prev_custom_model = get_default(
+        model_config, 'custom_model', MODEL_DEFAULTS)
     if (
             isinstance(prev_custom_model, str)
             and prev_custom_model.startswith(MASKED_ACTIONS_MODEL_KEY)
@@ -324,13 +346,12 @@ def _adjust_other_config_for_action_masking(
         # We already configured this.
         return
 
-    use_lstm = model_config.get('use_lstm', MODEL_DEFAULTS['use_lstm'])
+    use_lstm = get_default(model_config, 'use_lstm', MODEL_DEFAULTS)
     if use_lstm:
         model_config['use_lstm'] = False
         masked_actions_model_key = masked_actions_model_key + '_lstm'
 
-    use_attention = model_config.get(
-        'use_attention', MODEL_DEFAULTS['use_attention'])
+    use_attention = get_default(model_config, 'use_attention', MODEL_DEFAULTS)
     if use_attention:
         # TensorFlow eager mode does not support attention yet.
         assert framework in ['tf', 'torch'], \
@@ -345,8 +366,8 @@ def _adjust_other_config_for_action_masking(
             masked_actions_model_key = 'q_' + masked_actions_model_key
 
     model_config['custom_model'] = masked_actions_model_key
-    custom_model_config = model_config.get(
-        'custom_model_config', MODEL_DEFAULTS['custom_model_config'])
+    custom_model_config = get_default(
+        model_config, 'custom_model_config', MODEL_DEFAULTS)
     model_config['custom_model_config'] = {
         **custom_model_config,
         'model_cls': prev_custom_model,
@@ -416,14 +437,14 @@ def maybe_set_up_masked_actions_model(
             to use.
         config (TrainerConfigDict): Training configuration.
     """
-    env_config: EnvConfigDict = config.get(
-        'env_config', COMMON_CONFIG['env_config'])
+    env_config: EnvConfigDict = get_default(
+        config, 'env_config', COMMON_CONFIG)
     from hearts_gym import HeartsEnv
     if not env_config.get('mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT):
         return
 
     register_masked_actions_models(
-        config.get('framework', COMMON_CONFIG['framework']))
+        get_default(config, 'framework', COMMON_CONFIG))
 
     _adjust_other_config_for_action_masking(algorithm, config)
 
