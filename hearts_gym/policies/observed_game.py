@@ -6,7 +6,7 @@ Provides "normalized" information of a single observing player.
 
 import functools
 import itertools
-from typing import List, Optional, Union
+from typing import List, Tuple, Union
 
 from gym.spaces import Space
 import numpy as np
@@ -255,6 +255,56 @@ class ObservedGame:
                 than zero.
         """
         return HeartsGame.has_penalty(card)
+
+    def get_legal_actions(self) -> List[int]:
+        """Return all legal actions for the observing player.
+
+        Returns:
+            List[int]: Indices in hand for which cards are legal to play.
+        """
+        actions: Union[List[Tuple[int, Card]], List[Tuple[int]]]
+        if (
+                # No hearts or queen of spades in first trick.
+                self.is_first_trick
+        ):
+            if self.leading_player_index_offset == 0:
+                actions = list(filter(
+                    lambda i_card: not self.has_penalty(i_card[1]),
+                    enumerate(self.hand),
+                ))
+            else:
+                actions = list(filter(
+                    lambda i_card: (i_card[1].suit == self.leading_suit
+                                    and not self.has_penalty(i_card[1])),
+                    enumerate(self.hand),
+                ))
+
+        elif (
+                # Can't start with hearts.
+                not self.leading_hearts_allowed
+                and self.leading_player_index_offset == 0
+        ):
+            actions = list(filter(
+                lambda i_card: i_card[1].suit != Card.SUIT_HEART,
+                enumerate(self.hand),
+            ))
+
+        elif (
+                # Must follow suit.
+                self.leading_player_index_offset != 0
+        ):
+            actions = list(filter(
+                lambda i_card: i_card[1].suit == self.leading_suit,
+                enumerate(self.hand),
+            ))
+
+        else:
+            actions = list(map(lambda x: (x,), range(len(self.hand))))
+
+        actions: List[int] = list(map(HeartsGame._extract_action, actions))
+        if len(actions) == 0:
+            actions = list(range(len(self.hand)))
+        return actions
 
     def recreate_state(self, obs: TensorType) -> bool:
         """Build an internal game state matching the one given by the
