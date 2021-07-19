@@ -297,4 +297,10 @@ class ObservedGame:
         from the observing player.
         """
 
+        self.leading_suit = (
+            self.table_cards[0].suit
+            if len(self.table_cards) > 0
+            else None
+        )
+
         return self.leading_player_index_offset is None
