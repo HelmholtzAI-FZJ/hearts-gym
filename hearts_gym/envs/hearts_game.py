@@ -237,8 +237,10 @@ class HeartsGame:
             Card: Card obtained from the card state vector index.
         """
         suit, num_accumulated = next(
-            (index, num_cards)
-            for num_cards in self._accumulated_cards_per_suit
+            (suit, num_cards)
+            for (suit, num_cards) in enumerate(
+                    self._accumulated_cards_per_suit,
+            )
             if index < num_cards
         )
         rank = index - (num_accumulated - self._accumulated_cards_per_suit[0])
