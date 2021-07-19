@@ -19,6 +19,8 @@ def create_policy_mapping(
 
     - 'one_learned_rest_random': `learned_agent_id` uses the learned
       policy, the rest is random.
+    - 'one_learned_rest_rulebased': `learned_agent_id` uses the learned
+      policy, the rest is rule-based.
     - 'all_learned': All agents use the learned policy.
     - 'all_random': All agents use the randomly acting policy.
     - 'all_rulebased': All agents use the rule-based policy.
@@ -54,6 +56,24 @@ def create_policy_mapping(
             return random_policy_id
 
         return policy_mapping_one_learned_rest_random
+    elif policy_mapping_name == 'one_learned_rest_rulebased':
+        def policy_mapping_one_learned_rest_rulebased(
+                agent_id: AgentId,
+        ) -> PolicyID:
+            """Return the ID for a learned policy for the agent with
+            `learned_agent_id`, otherwise for a rule-based policy.
+
+            Args:
+                agent_id (AgentId): Agent ID to get the policy for.
+
+            Returns:
+                PolicyID: ID of the policy for the queried agent.
+            """
+            if agent_id == learned_agent_id:
+                return learned_policy_id
+            return rulebased_policy_id
+
+        return policy_mapping_one_learned_rest_rulebased
     elif policy_mapping_name == 'all_learned':
         def policy_mapping_all_learned(_) -> PolicyID:
             """Always return a learned policy.
