@@ -186,6 +186,8 @@ class ObservedGame:
             List[Card]: Cards on the table in the order of placement.
         """
         states_on_table = obs[self._indices_on_table]
+        if len(states_on_table) == 0:
+            return []
         sort_indices = np.argsort(states_on_table)
         states_on_table = states_on_table[sort_indices]
         sorted_indices = self._indices_on_table[sort_indices]
