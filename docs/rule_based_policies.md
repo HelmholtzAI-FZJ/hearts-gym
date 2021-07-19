@@ -16,26 +16,26 @@ policy ID `RULEBASED_POLICY_ID` in `configuration.py`. This is also
 the rule-based policy referred to by any `policy_mapping_fn` with
 `rulebased` in the name.
 
-### Mock Games
+### Observed Games
 
-Any rule-based policy has access to a mock game under the `game`
-member variable. The mock game provides several utility functions that
+Any rule-based policy has access to an `ObservedGame` under the `game`
+member variable. The observed game provides several utility functions that
 may be useful to implement the policy.
 
-For each observation, the mock game recreates the game state as viewed
-by the observing player (the agent being implemented). Due to only
-having limited knowledge of the game and working with the provided
-observations, some variables have to be treated with care. For
-example, the specially labeled variables `offset_collected` and
+For each observation, the observed game recreates the game state as
+viewed by the observing player (the agent being implemented). Due to
+only having limited knowledge of the game and working with the
+provided observations, some variables have to be treated with care.
+For example, the specially labeled variables `offset_collected` and
 `offset_penalties` are not ordered by player indices but instead by
 offset indices. The cards on the table, available under `table_cards`,
 are simply ordered by time of placement.
 
-Other differences between a standard `HeartsGame` and a `MockGame`
-include different and fewer variables and functionalities. For
-example, as a mock game only has access to the information one player
-has, there is only one `hand` but a list of `unknown_cards` whose
-location is not known to the observing player.
+Other differences between a standard `HeartsGame` and an
+`ObservedGame` include different and fewer variables and
+functionalities. For example, as an observed game only has access to
+the information one player has, there is only one `hand` but a list of
+`unknown_cards` whose location is not known to the observing player.
 
 ## Implementing Other Rule-based Policies
 

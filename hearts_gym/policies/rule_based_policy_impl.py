@@ -16,14 +16,14 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     """A rule-based policy implementation yielding deterministic actions
     for given observations.
 
-    The policy has access to a `mock_game` that is built from the
-    observations. This mock game supports common methods to build a
-    deterministic policy. If the mock game is missing an operation, it
-    can be implemented from scratch due to having access to the raw
-    observations. Please see `hearts_gym.policies.MockGame` for
-    more information.
+    The policy has access to an observed `game` that is built from the
+    observations. This observed game supports common methods to build a
+    deterministic policy. If the observed game is missing an operation,
+    it can be implemented from scratch due to having access to the raw
+    observations. Please see `hearts_gym.policies.ObservedGame` for more
+    information.
 
-    The mock game is expected to be updated from elsewhere.
+    The observed game is expected to be updated from elsewhere.
     """
 
     def compute_action(self, obs: TensorType) -> Action:

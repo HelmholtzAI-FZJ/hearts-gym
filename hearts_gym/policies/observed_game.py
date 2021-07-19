@@ -17,17 +17,17 @@ from hearts_gym.envs.card_deck import Card
 from hearts_gym.envs.hearts_game import HeartsGame
 
 
-class MockGame:
+class ObservedGame:
     """A mock game that is created from environmental observations.
 
-    Due to being created from observations, a mock game only has access to
-    information for a single observing player. Due to the same reason, the
-    mock game does not know about the specific index of each player.
-    Instead, it works with index offsets. This is important to keep in mind
-    when accessing the specifically labeled variables like
-    `offset_collected` or `offset_penalties`. Indexing these with 0, for
-    example, yields the value for the observing player (as an offset of 0
-    gives us the position of the observing player itself).
+    Due to being created from observations, an observed game only has
+    access to information for a single observing player. Due to the same
+    reason, the observed game does not know about the specific index of
+    each player. Instead, it works with index offsets. This is important
+    to keep in mind when accessing the specifically labeled variables
+    like `offset_collected` or `offset_penalties`. Indexing these with
+    0, for example, yields the value for the observing player (as an
+    offset of 0 gives us the position of the observing player itself).
     """
 
     def __init__(
@@ -35,8 +35,8 @@ class MockGame:
             original_obs_space: Space,
             card_states_start_index: int,
     ) -> None:
-        """Construct a new mock game getting observations with the given
-        original space (before preprocessing).
+        """Construct a new observed game getting observations with the
+        given original space (before preprocessing).
 
         Args:
             original_obs_space (Space): Observation space before

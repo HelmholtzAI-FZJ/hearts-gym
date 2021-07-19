@@ -21,7 +21,7 @@ from ray.rllib.utils.typing import (
 from hearts_gym.envs import HeartsEnv
 from hearts_gym.utils.typing import Action
 from .deterministic_policy_impl import DeterministicPolicyImpl
-from .mock_game import MockGame
+from .observed_game import ObservedGame
 from .rule_based_policy_impl import RuleBasedPolicyImpl
 
 
@@ -73,7 +73,7 @@ class RuleBasedPolicy(Policy):
             original_obs_space = original_space
             self._action_mask_len = 0
         card_states_start = self._action_mask_len
-        self._game = MockGame(original_obs_space, card_states_start)
+        self._game = ObservedGame(original_obs_space, card_states_start)
         self._policy_impl = policy_impl_cls(self._game)
 
     def _split_obs_and_mask(
