@@ -28,8 +28,10 @@ only having limited knowledge of the game and working with the
 provided observations, some variables have to be treated with care.
 For example, the specially labeled variables `offset_collected` and
 `offset_penalties` are not ordered by player indices but instead by
-offset indices. The cards on the table, available under `table_cards`,
-are simply ordered by time of placement.
+index offsets ([see index offsets in
+`docs/environment.md`](./environment.md#index-offsets) for an
+explanation of these). The cards on the table, available under
+`table_cards`, are simply ordered by time of placement.
 
 Other differences between a standard `HeartsGame` and an
 `ObservedGame` include different and fewer variables and
