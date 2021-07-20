@@ -147,7 +147,10 @@ displayed by Ray. The table looks something like this:
 
 ```python
 [...]
+# On Unix:
 (pid=10101) SystemExit: 1  # Can be ignored.
+# On Windows:
+(pid=10101) Windows fatal exception: access violation.  # Can be ignored.
 [...]
 testing took 1.23456789 seconds
 # illegal action (player 0): 0 / 52
