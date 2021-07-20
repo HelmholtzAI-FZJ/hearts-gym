@@ -161,6 +161,7 @@ def main() -> None:
     )
     agent = utils.load_agent(conf.algorithm, best_cp, eval_config)
 
+    print('Running', conf.num_test_games, 'test games...')
     (
         total_penalties,
         total_placements,
