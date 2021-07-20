@@ -25,7 +25,7 @@ from ray.rllib.utils.typing import (
 )
 from ray.tune.trainable import Trainable
 
-import hearts_gym.utils.common as utils
+from . import common as utils
 from hearts_gym.utils.typing import (
     AgentId,
     Info,
