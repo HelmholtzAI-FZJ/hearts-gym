@@ -62,9 +62,12 @@ th, _ = try_import_torch()
 jax, _ = try_import_jax()
 
 DEFAULT_FRAMEWORK = next(
-    config
-    for (fw, config) in [(tf, 'tf'), (th, 'torch'), (jax, 'jax')]
-    if fw is not None
+    (
+        config
+        for (fw, config) in [(tf, 'tf'), (th, 'torch'), (jax, 'jax')]
+        if fw is not None
+    ),
+    None,
 )
 """Configuration option for the first framework available in the
 following order:
@@ -72,6 +75,9 @@ following order:
 - PyTorch
 - JAX
 """
+assert DEFAULT_FRAMEWORK is not None, \
+    'please install a deep learning framework (TensorFlow, PyTorch, or JAX)'
+
 MASKED_ACTIONS_MODEL_KEY = 'masked_actions'
 
 
