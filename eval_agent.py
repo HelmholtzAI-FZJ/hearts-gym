@@ -335,6 +335,7 @@ def main() -> None:
 
     algorithm = args.algorithm
     checkpoint_path = Path(args.checkpoint_path)
+    assert checkpoint_path.exists(), 'checkpoint file does not exist'
     assert checkpoint_path.is_file(), \
         'please pass the checkpoint file, not its directory'
     checkpoint_path.resolve(True)
