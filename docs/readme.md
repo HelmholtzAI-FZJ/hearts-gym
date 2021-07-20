@@ -256,7 +256,7 @@ implemented in the file
 
 For more information on this topic including what to look out for and
 how to implement multiple rule-based agents, refer to
-[`docs/rule_based_policy.md`](./rule_based_policy.md)
+[`docs/rule-based-policies.md`](./rule-based-policies.md)
 
 ### Development
 
