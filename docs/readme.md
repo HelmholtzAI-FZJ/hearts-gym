@@ -127,9 +127,18 @@ like this:
 python train.py
 ```
 
-If you encounter memory errors, the simplest solution is to set a
-lower number of worker processes (`'num_workers'` in the `config`
-dictionary). By default, all CPUs and all GPUs are used.
+Common errors at this point:
+
+- If you encounter memory errors, the simplest solution is to set a
+  lower number of worker processes (`'num_workers'` in the `config`
+  dictionary). By default, all CPUs and all GPUs are used.
+- If your operating system complains about a low `ulimit`, please
+  execute `ulimit -n 8192` (or whatever your operating system
+  recommends) after activating your environment each time.
+- If you encounter GPU errors, make sure your CUDA and cuDNN versions
+  match the ones expected by your deep learning framework. You may
+  also set `num_gpus` in the `config` dictionary to 0 to forego these
+  troubles for a small loss in speed.
 
 If everything worked correctly, you should see a table summarizing
 test results of your learned agent against other agents printed on
