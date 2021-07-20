@@ -1,0 +1,7 @@
+*.pyc
+*.pkl
+.mypy_cache
+
+env/
+hearts_gym.egg-info/
+results/
