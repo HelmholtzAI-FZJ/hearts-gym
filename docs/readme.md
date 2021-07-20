@@ -71,6 +71,12 @@ You are done! [Head over to the usage section](#usage).
 
 ### Conda Installation
 
+Note that if you are coming from the standard installation
+instructions, you **must not** anymore use the virtual environment
+that was created (via `venv`). So please execute `deactivate` to
+deactivate the environment and delete the `env` directory. You will
+also have to re-install the requirements later on.
+
 To install a Python version different from your system's, below you
 can find instructions for
 [Miniconda](https://docs.conda.io/en/latest/miniconda.html). If you
@@ -91,17 +97,22 @@ need to [install the requirements](#installing-requirements).
 
 You will need to execute one of the following lines each time you
 start a new shell. This will activate the Python virtual environment
-we are using:
+we are using.
 
-```shell
-# On Unix:
-source ./env/bin/activate
-# On Windows:
-.\env\Scripts\activate
+- If you used the standard installation instructions:
 
-# If using Conda installation:
-conda activate hearts-gym
-```
+  ```shell
+  # On Unix:
+  source ./env/bin/activate
+  # On Windows:
+  .\env\Scripts\activate
+  ```
+
+- If you used the Conda installation instructions:
+
+  ```
+  conda activate hearts-gym
+  ```
 
 ### Training
 
