@@ -44,6 +44,16 @@ deck_size = 52
 seed = 0
 mask_actions = True
 
+# The following is a simple example for a custom `policy_mapping_fn`
+# for a four-player game:
+#
+# def policy_mapping_fn(player_index):
+#     return {
+#         0: LEARNED_AGENT_ID,
+#         1: RANDOM_AGENT_ID,
+#         2: RULEBASED_AGENT_ID,
+#         3: LEARNED_AGENT_ID,
+#     }[player_index]
 policy_mapping_fn = utils.create_policy_mapping(
     'all_learned',
     # 'one_learned_rest_random',
