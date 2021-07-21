@@ -4,6 +4,8 @@ from ray import tune
 
 from hearts_gym import utils
 
+assert utils.DEFAULT_FRAMEWORK is not None
+
 RESULTS_DIR = './results'
 
 ENV_NAME = 'Hearts-v0'
