@@ -83,6 +83,9 @@ class HeartsServer(TCPServer):
     PRINT_INTERVAL_SEC = 10
     """How long to wait between messages to a waiting client."""
 
+    RANDOM_AGENT_NAME = b'__RAND'
+    """Name that will result in a randomly acting agent."""
+
     def __init__(
             self,
             server_address: Address,
@@ -631,6 +634,9 @@ class HeartsServer(TCPServer):
         # We assume the client does not want to set a name.
         if data == server_utils.OK_MSG:
             return True
+        if data == self.RANDOM_AGENT_NAME:
+            self.unregister_client(client, True)
+            return True
 
         with self._client_change_lock:
             client.set_name(data)
@@ -866,11 +872,13 @@ class HeartsServer(TCPServer):
         """
         return self._send_failable(client, data, True)
 
-    def fill_remaining(self) -> None:
-        """Fill all remaining free spots with randomly acting agents."""
+    def fill_most_remaining(self) -> None:
+        """Fill most remaining free spots with randomly acting agents,
+        keeping one spot free.
+        """
         with self._client_change_lock:
             client_index = self.find_free_index()
-            while client_index is not None:
+            while len(self.clients) < self._max_num_clients - 1:
                 self.register_bot(client_index)
                 client_index = self.find_free_index()
 
@@ -921,7 +929,18 @@ class HeartsServer(TCPServer):
                     and is_first_client
                     and curr_time - start_time > self._wait_duration_sec
             ):
-                self.fill_remaining()
+                self.fill_most_remaining()
+
+                def simulate_client():
+                    with server_utils.create_client() as client:
+                        client.connect(self.server_address)
+                        server_utils.send_name(
+                            client, self.RANDOM_AGENT_NAME.decode())
+                        time.sleep(self.PRINT_INTERVAL_SEC)
+
+                Thread(target=simulate_client).start()
+
+                self.print_log('Filled remaining spots with bots.')
                 break
 
             if curr_time - last_print_time < self.PRINT_INTERVAL_SEC:
@@ -983,9 +1002,12 @@ class HeartsServer(TCPServer):
         self.print_log(
             f'Registered {client_address} at index {client.player_index}.')
 
-        self.receive_name(client)
+        successful = self.receive_name(client)
+        if not successful:
+            return
 
-        self._send_hello(client)
+        if client.is_registered:
+            self._send_hello(client)
 
         if len(self.clients) < self._max_num_clients:
             self._start_waiter_thread(client)
