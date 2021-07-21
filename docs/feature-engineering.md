@@ -9,12 +9,11 @@ environment, follow the following steps:
 2. Implement a `transform` method with the same signature as
    given by the superclass.
 3. Add the newly implemented class to the list of transformations
-   `utils.obs_transforms` in `configuration.py`, for example like
-   this:
+   `obs_transforms` in `configuration.py`, for example like this:
 
    ```python
    # Note that we are adding instances of the class.
-   utils.obs_transforms: List[ObsTransform] = [
+   obs_transforms: List[ObsTransform] = [
        MyObsTransform(),
    ]
    ```
