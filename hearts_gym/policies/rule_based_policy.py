@@ -97,18 +97,16 @@ class RuleBasedPolicy(Policy):
     def _compute_action(
             self,
             obs: TensorType,
-            batch_index: int,
     ) -> Action:
         """Compute the action to take for the given observations.
 
         Args:
             obs (TensorType): Observations to compute the action for.
-            batch_index (int): Index of the observation in the batch.
 
         Returns:
             Action: Which action to take. Assumed to be deterministic.
         """
-        return self._policy_impl.compute_action(obs, batch_index)
+        return self._policy_impl.compute_action(obs)
 
     @override(Policy)
     def compute_actions(
@@ -161,7 +159,7 @@ class RuleBasedPolicy(Policy):
                 actions[i] = 0
                 continue
 
-            action = self._compute_action(obs, i)
+            action = self._compute_action(obs)
             actions[i] = action
 
         np.expand_dims(actions, 1)

@@ -32,7 +32,7 @@ class DeterministicPolicyImpl:
         """
         self.game = observed_game
 
-    def compute_action(self, obs: TensorType, batch_index: int = 0) -> Action:
+    def compute_action(self, obs: TensorType) -> Action:
         """Compute a deterministic action for the given observations.
 
         The internal observed game is expected to have been updated from
@@ -43,7 +43,6 @@ class DeterministicPolicyImpl:
                 compute an action for. May be safely ignored due to the
                 observed game implementing more sensible access to the
                 observed data.
-            batch_index (int): Index of the observation in the batch.
 
         Returns:
             Action: Action to execute given the observation.
