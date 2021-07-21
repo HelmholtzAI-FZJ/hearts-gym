@@ -949,6 +949,8 @@ class HeartsServer(TCPServer):
         Args:
             client (Client): Client that should wait.
         """
+        if not client.is_registered:
+            return
         self.logger.info(f'Starting waiter thread for {client.address}...')
         with self._client_change_lock:
             thread = Thread(
