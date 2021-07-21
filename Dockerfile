@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 	git \
 	zlib1g \
 	libglib2.0-0 \
-	emacs joe mg nano vim zile
+	emacs joe mg nano neovim vim vis zile
 COPY . $REPO_DIR
 WORKDIR $REPO_DIR
 RUN python -m pip install --upgrade pip
