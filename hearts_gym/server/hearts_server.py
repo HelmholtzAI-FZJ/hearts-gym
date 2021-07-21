@@ -1612,12 +1612,15 @@ class HeartsRequestHandler(BaseRequestHandler):
                 f'Total penalties: {self.server.total_penalties}')
             self.server.logger.info(
                 f'Total placements: {self.server.total_placements}')
-            print(utils.create_results_table(
+            results_table = utils.create_results_table(
                 self.server.total_penalties,
                 self.server.total_placements,
                 self._index_to_name,
                 self.server.num_illegals,
-            ))
+            )
+            print(results_table)
+            results_table: bytes = server_utils.encode_data(
+                '\n' + results_table)
 
             return_data: List[Tuple[  # type: ignore[no-redef]
                 int,
@@ -1634,6 +1637,16 @@ class HeartsRequestHandler(BaseRequestHandler):
             self._communicators.map(
                 lambda client: self.server.send_failable_replacing(
                     client, return_data),
+                (clients[i] for i in range(num_players)),
+            )
+            self._communicators.map(
+                lambda client: self.server.receive_ok_replacing(
+                    client, self.OK_TIMEOUT_SEC),
+                (clients[i] for i in range(num_players)),
+            )
+            self._communicators.map(
+                lambda client: self.server.send_failable_replacing(
+                    client, results_table),
                 (clients[i] for i in range(num_players)),
             )
             self._communicators.map(
