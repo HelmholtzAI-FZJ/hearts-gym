@@ -407,8 +407,8 @@ def _eval_unstable(
                             'custom_model', '').endswith('_attn')
                     )
             ):
-                for (i, state) in enumerate(states[agent_id]):
-                    states[agent_id][i] = np.vstack((state[1:], state[i]))
+                for (i, prev_state) in enumerate(states[agent_id]):
+                    states[agent_id][i] = np.vstack((prev_state[1:], state[i]))
             else:
                 states[agent_id] = state
             prev_actions[agent_id] = action

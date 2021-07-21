@@ -11,10 +11,13 @@ import sys
 from typing import Any, Dict, List, Optional, Tuple
 import zlib
 
+import numpy as np
 import ray
 from ray.rllib.agents.trainer import COMMON_CONFIG
+from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.utils.typing import TensorType, TrainerConfigDict
 from ray.tune.result import EXPR_PARAM_PICKLE_FILE
+from ray.tune.trainable import Trainable
 
 import configuration as conf
 from configuration import ENV_NAME, LEARNED_POLICY_ID
@@ -330,6 +333,36 @@ def _update_indices(
         values[i] = new_val
 
 
+def _update_states(
+        agent: Trainable,
+        states: List[List[TensorType]],
+        indices: List[int],
+        new_states: List[List[TensorType]],
+):
+    model_config = utils.get_default(agent.config, 'model', COMMON_CONFIG)
+
+    if (
+            utils.get_default(
+                model_config, 'use_attention', MODEL_DEFAULTS)
+            or (
+                (
+                    utils.get_default(
+                        model_config, 'custom_model', MODEL_DEFAULTS)
+                    is not None
+                )
+                and model_config.get(
+                    'custom_model', '').endswith('_attn')
+            )
+    ):
+        for (i, new_state) in zip(indices, new_states):
+            for (j, (prev_state, state)) in enumerate(
+                    zip(states[i], new_state),
+            ):
+                states[i][j] = np.vstack((prev_state[1:], state))
+    else:
+        _update_indices(states, indices, new_states)
+
+
 def main() -> None:
     """Connect to a server and play games using a loaded model."""
     args = parse_args()
@@ -420,7 +453,7 @@ def main() -> None:
         num_iters = 0
         num_games = 0
         while not _is_done(num_games, max_num_games):
-            states: List[TensorType] = [
+            states: List[List[TensorType]] = [
                 utils.get_initial_state(agent, LEARNED_POLICY_ID)
                 for _ in range(num_parallel_games)
             ]
@@ -486,7 +519,7 @@ def main() -> None:
 
                 server_utils.send_actions(client, actions)
 
-                _update_indices(states, indices, new_states)
+                _update_states(agent, states, indices, new_states)
                 _update_indices(prev_actions, indices, actions)
 
             server_utils.send_ok(client)
