@@ -1,7 +1,7 @@
 import pytest
 
 from hearts_gym.envs.hearts_game import Card
-from hearts_gym.utils.logic import Probability, Certainty, ALWAYS, NEVER, MAYBE, filter_cards_above, gets_trick
+from hearts_gym.utils.logic import Probability, Certainty, ALWAYS, NEVER, MAYBE, filter_cards_above, gets_trick, p_gets_trick
 
 # Suits
 A, B, C, D = 0, 1, 2, 3
@@ -122,7 +122,7 @@ def test_gets_trick_as_first():
         card=C10,
         table_cards=[],
         cards_by_others=[AK, BA, CJ, C8],
-    ) is MAYBE
+    ) == (3/4 * 3/4 * 3/4)
     pass
 
 def test_gets_trick_as_intermediate():
@@ -154,7 +154,7 @@ def test_gets_trick_as_intermediate():
         card=A5,
         table_cards=[A2, D6],
         cards_by_others=[A9, A3, B2, C7],
-    ) is MAYBE
+    ) == 3/4
     pass
 
 
@@ -175,11 +175,21 @@ def test_gets_trick_as_last():
         card=A7,
         table_cards=[A4, CK, D6],
         cards_by_others=[D6, A3, A8, C5],
-    ) is MAYBE
+    ) is ALWAYS
 
     assert gets_trick(
         card=A7,
         table_cards=[A4, CK, D6],
         cards_by_others=[A3, A8, C5],
-    ) is NEVER
+    ) is ALWAYS
+    pass
+
+
+def test_p_gets_trick():
+    assert p_gets_trick(0, 5, 2) == 1
+    assert p_gets_trick(5, 0, 2) == 0
+    with pytest.raises(ValueError, match="Useless"):
+        p_gets_trick(5, 3, 0)
+    assert p_gets_trick(5, 5, 1) == 0.5
+    assert p_gets_trick(2, 2, 2) == 0.25
     pass
