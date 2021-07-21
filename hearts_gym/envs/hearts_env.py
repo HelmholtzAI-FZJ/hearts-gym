@@ -89,7 +89,8 @@ class HeartsEnv(MultiAgentEnv):
                 not `None`.
             deck_size (int): Amount of cards in the deck. Only used if
                 `game` is not `None`.
-            game (Optional[HeartsGame]): A pre-initialized game simulator.
+            game (Optional[HeartsGame]): A pre-initialized
+                game simulator.
             mask_actions (bool): Whether to enable action masking,
                 parameterizing the action space.
             seed (GymSeed): Random number generator base seed.
@@ -133,6 +134,18 @@ class HeartsEnv(MultiAgentEnv):
             # don't have any other suit.
             'leading_hearts_allowed': spaces.Discrete(2),
         }
+        ordered_keys = iter(sorted(obs_space.keys()))
+        first_ordered_key = next(ordered_keys)
+        second_ordered_key = next(ordered_keys)
+        assert (
+            first_ordered_key == 'cards'
+            and second_ordered_key == 'leading_hearts_allowed'
+        ), (
+            f'first two keys in the first definition of `obs_space` must be '
+            f"'cards' and 'leading_hearts_allowed', in that order (was "
+            f'{first_ordered_key} and {second_ordered_key})'
+        )
+
         if mask_actions:
             # Same as above, all other keys in the dictionary must be
             # ordered below these ones.
