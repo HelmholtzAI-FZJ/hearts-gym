@@ -13,10 +13,12 @@ from hearts_gym.utils.typing import Action
 from .deterministic_policy_impl import DeterministicPolicyImpl
 
 import enum
-
+import textwrap
+import pathlib
 import numpy as np
+import os
 
-from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE
+from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE, p_gets_trick
 
 class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     """A rule-based policy implementation yielding deterministic actions
@@ -32,6 +34,9 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     The observed game is expected to be updated from elsewhere.
     """
     pass
+
+
+logfile = pathlib.Path("logs", f"logfile_{os.getpid()}.txt").open("w")
 
 
 class RulebasedNext(DeterministicPolicyImpl):
@@ -62,38 +67,46 @@ class RulebasedNext(DeterministicPolicyImpl):
         for a, c in enumerate(legal_cards_to_play):
             # Would this card get the trick?
             gets = gets_trick(c, cards_on_table, cards_by_others)
+            p_get_trick[a] = gets
+            p_avoid_trick[a] = 1 - gets
 
-            if gets is ALWAYS:
-                p_get_trick[a] = 1
-                p_avoid_trick[a] = 0
-            elif gets is NEVER:
-                p_get_trick[a] = 0
-                p_avoid_trick[a] = 1
-            else:
-                p_get_trick[a] = np.nan
-                p_avoid_trick[a] = np.nan
-                pass
 
+        assert not any(np.isnan(p_get_trick))
+        assert not any(np.isnan(p_avoid_trick))
+
+        action = None
         ######## HEURISTICS ########
-        if not all(np.isnan(p_avoid_trick)):
-            # There's already a penalty, but we can avoid it let's do that.
-            a = sum(penalty_on_table) > 0
-            b = any(p_avoid_trick == 1)
-            if a and b:
-                # Fight off with the most-penalized card that defends successfully.
-                return legal_indices_to_play[np.nanargmax(p_avoid_trick * penalty_of_action_cards)]
-
-
-        if not all(np.isnan(p_get_trick)):
+        if sum(penalty_on_table) > 0 and any(p_avoid_trick == 1):
+            # There's already a penalty, but we can avoid it so let's do that.
+            # Fight off with the most-penalized card that defends successfully.
+            action = legal_indices_to_play[np.argmax(p_avoid_trick * penalty_of_action_cards)]
+            # TODO: Choose the defense card based on penalty/value:
+            # + Defend with ♠Q if we can.
+            # + Defend with a ♥️ (higher is better, except the ♥️A)
+            # + Defend with ♣️ or diamond
+            # + Don't defend with a ♠ unless we have ♠Q ourselves
+        if action is None:
             # What would be the penalties of the possible actions?
             penalty_outcome = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
-            assert np.shape(penalty_outcome) == (A,), f"penalty_outcome.shape was {np.shape(penalty_outcome)}"
-            if any(penalty_outcome == 0):
-                # There's no penalty, and we can take the tick without taking a penalty 🎉
-                return np.random.choice(legal_indices_to_play[penalty_outcome == 0])
+            # TODO: Consider penalties of incoming cards.
+            # TODO: Calculate a second vector [0-1] to describe the "value" of action cards for future rounds.
 
-        # Heuristics did not conclude. Let's make an unpredictable move! 😈
-        return np.random.choice(legal_indices_to_play)
+            # Take the action that minimizes the expected penalties.
+            action = legal_indices_to_play[np.argmin(penalty_outcome)]
+
+        logfile.write(textwrap.dedent(f"""
+        table  : {cards_on_table}
+        actions: {legal_cards_to_play}
+        p_get  : {p_get_trick.tolist()}
+        p_avoid: {p_avoid_trick.tolist()}
+        action : {action}
+        """))
+        logfile.flush()
+
+        if action is None:
+            # Heuristics did not conclude. Let's make an unpredictable move! 😈
+            return np.random.choice(legal_indices_to_play)
+        return action
 
 
 
