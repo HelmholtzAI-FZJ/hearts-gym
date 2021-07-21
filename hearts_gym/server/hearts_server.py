@@ -73,7 +73,7 @@ class HeartsServer(TCPServer):
     """How long clients have to respond with an 'OK' message until they are
     automatically disconnected.
     """
-    SETUP_OK_TIMEOUT_SEC = 10
+    SETUP_OK_TIMEOUT_SEC = 20
     """How long clients have to respond with an 'OK' message to the metadata
     message until they are automatically disconnected after.
 
