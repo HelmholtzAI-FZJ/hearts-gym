@@ -26,5 +26,5 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     The observed game is expected to be updated from elsewhere.
     """
 
-    def compute_action(self, obs: TensorType) -> Action:
+    def compute_action(self, obs: TensorType, batch_index: int = 0) -> Action:
         raise NotImplementedError('please implement the rule-based agent')
