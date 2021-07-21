@@ -1,3 +1,4 @@
+from hearts_gym.policies.rule_based_policy_impl import RulebasedNext, RulebasedPrevious
 from typing import Dict, Optional
 
 from ray import tune
@@ -27,7 +28,10 @@ and convenience.
 # "tf", "torch", or "jax", whichever is available (in that order).
 framework: str = utils.DEFAULT_FRAMEWORK
 
-custom_rulebased_policies: Dict[str, type] = {}
+custom_rulebased_policies: Dict[str, type] = {
+    "rulebasedNext": RulebasedNext,
+    "rulebasedPrevious": RulebasedPrevious,
+}
 """Dictionary of custom rule-based policies.
 
 Mapping from policy IDs to classes (not class instances!) implementing
@@ -43,8 +47,8 @@ seed = 0
 mask_actions = True
 
 POLICY_MAPPING = {
-    0: "rulebased",
-    1: "rulebased",
+    0: "rulebasedNext",
+    1: "rulebasedPrevious",
     2: "random",
     3: "random",
 }
@@ -53,8 +57,8 @@ def policy_mapping_fn(agent_id):
 
 
 EVAL_POLICY_MAPPING = {
-    0: "rulebased",
-    1: "rulebased",
+    0: "rulebasedNext",
+    1: "rulebasedPrevious",
     2: "random",
     3: "random",
 }

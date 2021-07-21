@@ -12,6 +12,8 @@ from hearts_gym.utils.typing import Action
 from .deterministic_policy_impl import DeterministicPolicyImpl
 
 
+import numpy as np
+
 class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     """A rule-based policy implementation yielding deterministic actions
     for given observations.
@@ -25,6 +27,79 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
 
     The observed game is expected to be updated from elsewhere.
     """
+    pass
 
+
+class RulebasedNext(DeterministicPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
-        raise NotImplementedError('please implement the rule-based agent')
+        # Collect some observations about the current round
+        cards_on_hand = np.array(self.game.hand)
+        cards_on_table = np.array(self.game.table_cards)
+        legal_indices_to_play = np.array(self.game.get_legal_actions())
+        legal_cards_to_play = [cards_on_hand[i] for i in legal_indices_to_play]
+        penalty_on_table = np.array([self.game.get_penalty(c) for c in cards_on_table])
+        penalty_of_action_cards = np.array([self.game.get_penalty(c) for c in legal_cards_to_play])
+        highest_rank_on_table = max(c.rank for c in cards_on_table) if len(cards_on_table) else -1
+
+        # Some constants for easier iterations or slicing
+        T = len(cards_on_table)
+        H = len(cards_on_hand)
+        A = len(legal_indices_to_play)
+
+        assert np.shape(legal_cards_to_play) == (A,), f"shape was {np.shape(penalty_of_action_cards)}"
+        assert np.shape(legal_indices_to_play) == (A,), f"shape was {np.shape(legal_indices_to_play)}"
+        assert np.shape(penalty_on_table) == (T,), f"shape was {np.shape(penalty_on_table)}"
+        assert np.shape(penalty_of_action_cards) == (A,), f"shape was {np.shape(penalty_of_action_cards)}"
+
+        # Probabilities of certain outcomes (NaN means unknown).
+        p_get_trick = np.repeat(np.nan, A)
+        p_avoid_trick = np.repeat(np.nan, A)
+        for a, c in enumerate(legal_cards_to_play):
+            # Can this card definitely fight off the trick?
+            if (
+                c.suit != self.game.leading_suit
+                or (c.rank < highest_rank_on_table)
+            ):
+                p_get_trick[a] = 0
+                p_avoid_trick[a] = 1
+                continue
+            # Can this card definitely get the trick?
+            elif (
+                c.suit == self.game.leading_suit
+                and c.rank > highest_rank_on_table
+                and len(cards_on_table) == self.game.num_players - 1
+            ):
+                p_get_trick[a] = 1
+                p_avoid_trick[a] = 0
+            # Oh boi, it's getting complicated.
+            else:
+                # TODO: try to find the get/avoid probabilities based on which cards are still in the game
+                pass
+
+        ######## HEURISTICS ########
+        if not all(np.isnan(p_avoid_trick)):
+            # There's already a penalty, but we can avoid it let's do that.
+            a = sum(penalty_on_table) > 0
+            b = any(p_avoid_trick == 1)
+            if a and b:
+                # Fight off with the most-penalized card that defends successfully.
+                return legal_indices_to_play[np.nanargmax(p_avoid_trick * penalty_of_action_cards)]
+
+
+        if not all(np.isnan(p_get_trick)):
+            # What would be the penalties of the possible actions?
+            penalty_outcome = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
+            assert np.shape(penalty_outcome) == (A,), f"penalty_outcome.shape was {np.shape(penalty_outcome)}"
+            if any(penalty_outcome == 0):
+                # There's no penalty, and we can take the tick without taking a penalty 🎉
+                return np.random.choice(legal_indices_to_play[penalty_outcome == 0])
+
+        # Heuristics did not conclude. Let's make an unpredictable move! 😈
+        return np.random.choice(legal_indices_to_play)
+
+
+class RulebasedPrevious(DeterministicPolicyImpl):
+    def compute_action(self, obs: TensorType) -> Action:
+        legal_indices_to_play = self.game.get_legal_actions()
+        # Play completely at random
+        return np.random.choice(legal_indices_to_play)
