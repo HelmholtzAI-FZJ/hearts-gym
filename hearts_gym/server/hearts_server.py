@@ -1612,12 +1612,12 @@ class HeartsRequestHandler(BaseRequestHandler):
                 f'Total penalties: {self.server.total_penalties}')
             self.server.logger.info(
                 f'Total placements: {self.server.total_placements}')
-            utils.print_results_table(
+            print(utils.create_results_table(
                 self.server.total_penalties,
                 self.server.total_placements,
                 self._index_to_name,
                 self.server.num_illegals,
-            )
+            ))
 
             return_data: List[Tuple[  # type: ignore[no-redef]
                 int,
