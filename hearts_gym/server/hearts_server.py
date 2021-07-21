@@ -1681,7 +1681,7 @@ class HeartsRequestHandler(BaseRequestHandler):
         self.server.print_log('Finishing...')
         self._communicators.terminate()
         self._communicators.join()
-        self.server.envs.terminate_pool()
+        self.server.needs_reset = True
 
         clients = self.server.clients
 
