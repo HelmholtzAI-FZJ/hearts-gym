@@ -13,7 +13,7 @@ class Client:
         '_name',
     ]
 
-    MAX_NAME_BYTES = 24
+    MAX_NAME_BYTES = 64
     """Maximum byte length of a name."""
     CONTROL_CHAR_RE = re.compile('[\x00-\x1f\x7f-\x9f]')
     """Regular expression to match Unicode control characters."""
