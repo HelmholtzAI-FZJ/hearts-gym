@@ -44,7 +44,11 @@ def parse_args() -> Namespace:
     parser.add_argument(
         'checkpoint_path',
         type=str,
-        nargs='?' if conf.checkpoint_path is not None else None,
+        nargs=(
+            '?'  # type: ignore[arg-type]
+            if conf.checkpoint_path is not None
+            else None
+        ),
         default=conf.checkpoint_path,
         help='Path of model checkpoint to load for evaluation.',
     )
