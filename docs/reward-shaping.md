@@ -14,7 +14,7 @@ for 'previous', referring to when the agent was active last.
 
 ## Useful Variables and Functions available to `RewardFunction`
 
-What follows is a list of useful attributes accesible to the
+What follows is a list of useful attributes accessible to the
 `RewardFunction` that will help for reward shaping. In the list,
 `self` refers to the `RewardFunction` instance.
 
