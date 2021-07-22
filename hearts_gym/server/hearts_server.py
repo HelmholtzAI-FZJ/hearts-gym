@@ -73,7 +73,7 @@ class HeartsServer(TCPServer):
     """How long clients have to respond with an 'OK' message until they are
     automatically disconnected.
     """
-    SETUP_OK_TIMEOUT_SEC = 10
+    SETUP_OK_TIMEOUT_SEC = 20
     """How long clients have to respond with an 'OK' message to the metadata
     message until they are automatically disconnected after.
 
@@ -82,6 +82,9 @@ class HeartsServer(TCPServer):
 
     PRINT_INTERVAL_SEC = 10
     """How long to wait between messages to a waiting client."""
+
+    RANDOM_AGENT_NAME = b'__RAND'
+    """Name that will result in a randomly acting agent."""
 
     def __init__(
             self,
@@ -270,6 +273,11 @@ class HeartsServer(TCPServer):
                         and self._has_client_address(client_address)
                     )
             ):
+                try:
+                    data = server_utils.encode_data('Game is full already.')
+                    request.sendall(data)
+                except Exception:
+                    pass
                 self.logger.info('Rejected.')
                 return False
 
@@ -631,6 +639,9 @@ class HeartsServer(TCPServer):
         # We assume the client does not want to set a name.
         if data == server_utils.OK_MSG:
             return True
+        if data == self.RANDOM_AGENT_NAME:
+            self.unregister_client(client, True)
+            return True
 
         with self._client_change_lock:
             client.set_name(data)
@@ -866,11 +877,13 @@ class HeartsServer(TCPServer):
         """
         return self._send_failable(client, data, True)
 
-    def fill_remaining(self) -> None:
-        """Fill all remaining free spots with randomly acting agents."""
+    def fill_most_remaining(self) -> None:
+        """Fill most remaining free spots with randomly acting agents,
+        keeping one spot free.
+        """
         with self._client_change_lock:
             client_index = self.find_free_index()
-            while client_index is not None:
+            while len(self.clients) < self._max_num_clients - 1:
                 self.register_bot(client_index)
                 client_index = self.find_free_index()
 
@@ -921,8 +934,19 @@ class HeartsServer(TCPServer):
                     and is_first_client
                     and curr_time - start_time > self._wait_duration_sec
             ):
-                self.fill_remaining()
-                break
+                self.fill_most_remaining()
+
+                def simulate_client():
+                    with server_utils.create_client() as tmp_client:
+                        tmp_client.connect(self.server_address)
+                        server_utils.send_name(
+                            tmp_client, self.RANDOM_AGENT_NAME.decode())
+                        time.sleep(self.PRINT_INTERVAL_SEC)
+
+                Thread(target=simulate_client).start()
+
+                self.print_log('Filled remaining spots with bots.')
+                continue
 
             if curr_time - last_print_time < self.PRINT_INTERVAL_SEC:
                 continue
@@ -949,6 +973,8 @@ class HeartsServer(TCPServer):
         Args:
             client (Client): Client that should wait.
         """
+        if not client.is_registered:
+            return
         self.logger.info(f'Starting waiter thread for {client.address}...')
         with self._client_change_lock:
             thread = Thread(
@@ -981,9 +1007,12 @@ class HeartsServer(TCPServer):
         self.print_log(
             f'Registered {client_address} at index {client.player_index}.')
 
-        self.receive_name(client)
+        successful = self.receive_name(client)
+        if not successful:
+            return
 
-        self._send_hello(client)
+        if client.is_registered:
+            self._send_hello(client)
 
         if len(self.clients) < self._max_num_clients:
             self._start_waiter_thread(client)
@@ -1610,12 +1639,15 @@ class HeartsRequestHandler(BaseRequestHandler):
                 f'Total penalties: {self.server.total_penalties}')
             self.server.logger.info(
                 f'Total placements: {self.server.total_placements}')
-            utils.print_results_table(
+            results_table = utils.create_results_table(
                 self.server.total_penalties,
                 self.server.total_placements,
                 self._index_to_name,
                 self.server.num_illegals,
             )
+            print(results_table)
+            results_table: bytes = server_utils.encode_data(
+                '\n' + results_table)
 
             return_data: List[Tuple[  # type: ignore[no-redef]
                 int,
@@ -1639,12 +1671,22 @@ class HeartsRequestHandler(BaseRequestHandler):
                     client, self.OK_TIMEOUT_SEC),
                 (clients[i] for i in range(num_players)),
             )
+            self._communicators.map(
+                lambda client: self.server.send_failable_replacing(
+                    client, results_table),
+                (clients[i] for i in range(num_players)),
+            )
+            self._communicators.map(
+                lambda client: self.server.receive_ok_replacing(
+                    client, self.OK_TIMEOUT_SEC),
+                (clients[i] for i in range(num_players)),
+            )
 
     def finish(self) -> None:
         self.server.print_log('Finishing...')
         self._communicators.terminate()
         self._communicators.join()
-        self.server.envs.terminate_pool()
+        self.server.needs_reset = True
 
         clients = self.server.clients
 

@@ -7,12 +7,14 @@ from contextlib import closing
 from io import StringIO
 import sys
 from typing import Any, List, Optional, TextIO, Tuple, Union
+import uuid
 
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
+from hearts_gym.utils.obs_transforms import apply_obs_transforms, ObsTransform
 from hearts_gym.utils.typing import (
     GymSeed,
     MultiAction,
@@ -20,7 +22,6 @@ from hearts_gym.utils.typing import (
     MultiIsDone,
     MultiObservation,
     MultiReward,
-    Observation,
 )
 from .hearts_game import HeartsGame
 
@@ -76,6 +77,7 @@ class HeartsEnv(MultiAgentEnv):
             game: Optional[HeartsGame] = None,
             mask_actions: bool = MASK_ACTIONS_DEFAULT,
             seed: GymSeed = 0,
+            obs_transforms: List[ObsTransform] = [],
     ) -> None:
         """Construct a Hearts environment with a strong random seed.
 
@@ -89,10 +91,13 @@ class HeartsEnv(MultiAgentEnv):
                 not `None`.
             deck_size (int): Amount of cards in the deck. Only used if
                 `game` is not `None`.
-            game (Optional[HeartsGame]): A pre-initialized game simulator.
+            game (Optional[HeartsGame]): A pre-initialized
+                game simulator.
             mask_actions (bool): Whether to enable action masking,
                 parameterizing the action space.
             seed (GymSeed): Random number generator base seed.
+            obs_transforms (List[ObsTransform]): Transformations to
+                apply to the observations.
         """
         seed = self.seed(seed)[0]
         if game is None:
@@ -100,6 +105,7 @@ class HeartsEnv(MultiAgentEnv):
                 num_players=num_players, deck_size=deck_size, seed=seed)
         self.game = game
         self.mask_actions = mask_actions
+        self._obs_transforms = obs_transforms
 
         # Each card can either be
         #    0: unknown
@@ -133,6 +139,18 @@ class HeartsEnv(MultiAgentEnv):
             # don't have any other suit.
             'leading_hearts_allowed': spaces.Discrete(2),
         }
+        ordered_keys = iter(sorted(obs_space.keys()))
+        first_ordered_key = next(ordered_keys)
+        second_ordered_key = next(ordered_keys)
+        assert (
+            first_ordered_key == 'cards'
+            and second_ordered_key == 'leading_hearts_allowed'
+        ), (
+            f'first two keys in the first definition of `obs_space` must be '
+            f"'cards' and 'leading_hearts_allowed', in that order (was "
+            f'{first_ordered_key} and {second_ordered_key})'
+        )
+
         if mask_actions:
             # Same as above, all other keys in the dictionary must be
             # ordered below these ones.
@@ -245,7 +263,7 @@ class HeartsEnv(MultiAgentEnv):
         """
         return (player_indices - offset_from_player_index) % num_players
 
-    def _game_state_to_obs(self, player_index: int) -> Observation:
+    def _game_state_to_obs(self, player_index: int) -> Any:
         """Return all necessary game state information as a player
         index-independent observation for the player with the given
         index.
@@ -260,8 +278,8 @@ class HeartsEnv(MultiAgentEnv):
                 observation for.
 
         Returns:
-            Observation: The observation with all known information of
-                the given player.
+            Any: The observation with all known information of the
+                given player.
         """
         cards_state = self.game.state.copy()
 
@@ -328,6 +346,9 @@ class HeartsEnv(MultiAgentEnv):
             'cards': cards_state,
             'leading_hearts_allowed': self.game.leading_hearts_allowed,
         }
+        obs = apply_obs_transforms(
+            self._obs_transforms, obs, player_index, self.uuid)
+
         if self.mask_actions:
             obs = {self.OBS_KEY: obs}
             action_mask = np.zeros(
@@ -335,6 +356,7 @@ class HeartsEnv(MultiAgentEnv):
             legal_actions = self.game.get_legal_actions(player_index)
             action_mask[legal_actions] = 1
             obs[self.ACTION_MASK_KEY] = action_mask
+
         return obs
 
     def get_legal_actions(self) -> List[int]:
@@ -462,6 +484,7 @@ class HeartsEnv(MultiAgentEnv):
             MultiObservation: Observation for the active player.
         """
         self.game.reset()
+        self.uuid = uuid.uuid4()
         next_active_player_index = self.game.active_player_index
         obs = {
             next_active_player_index: (
