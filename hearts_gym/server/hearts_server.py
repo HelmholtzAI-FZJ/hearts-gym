@@ -273,6 +273,11 @@ class HeartsServer(TCPServer):
                         and self._has_client_address(client_address)
                     )
             ):
+                try:
+                    data = server_utils.encode_data('Game is full already.')
+                    request.sendall(data)
+                except Exception:
+                    pass
                 self.logger.info('Rejected.')
                 return False
 
