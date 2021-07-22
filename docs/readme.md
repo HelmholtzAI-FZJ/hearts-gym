@@ -260,6 +260,8 @@ how to implement multiple rule-based agents, refer to
 
 ### Development
 
+#### Type Checking
+
 As Ray takes quite some time to initialize, for a faster development
 workflow, you can use [the `mypy`
 typechecker](https://github.com/python/mypy). To check types for the
