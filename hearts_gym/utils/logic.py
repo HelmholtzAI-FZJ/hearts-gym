@@ -1,4 +1,5 @@
-import pytest
+from hearts_gym.policies.observed_game import ObservedGame
+import numpy as np
 from typing import Optional, Tuple, Iterable
 
 from hearts_gym.envs.card_deck import Card
@@ -21,6 +22,41 @@ class Certainty:
 ALWAYS = Certainty.ALWAYS
 MAYBE = Certainty.MAYBE
 NEVER = Certainty.NEVER
+
+
+class DeepState:
+    def __init__(self, game: ObservedGame) -> None:
+        self.game = game
+        self.cards_on_hand = np.array(self.game.hand)
+        self.cards_on_table = np.array(self.game.table_cards)
+        self.unseen_cards = self.game.unknown_cards
+        self.cards_by_others = [c for c in self.unseen_cards if c not in self.cards_on_hand]
+        self.legal_indices_to_play = np.array(self.game.get_legal_actions())
+        self.legal_cards_to_play = [self.cards_on_hand[i] for i in self.legal_indices_to_play]
+        self.penalty_on_table = np.array([self.game.get_penalty(c) for c in self.cards_on_table])
+        self.penalty_of_action_cards = np.array([self.game.get_penalty(c) for c in self.legal_cards_to_play])
+        self.T = len(self.cards_on_table)
+        self.H = len(self.cards_on_hand)
+        self.A = len(self.legal_indices_to_play)
+
+        assert np.shape(self.legal_cards_to_play) == (self.A,), f"shape was {np.shape(self.penalty_of_action_cards)}"
+        assert np.shape(self.legal_indices_to_play) == (self.A,), f"shape was {np.shape(self.legal_indices_to_play)}"
+        assert np.shape(self.penalty_on_table) == (self.T,), f"shape was {np.shape(self.penalty_on_table)}"
+        assert np.shape(self.penalty_of_action_cards) == (self.A,), f"shape was {np.shape(self.penalty_of_action_cards)}"
+        super().__init__()
+
+    def calculate_get_avoid_probabilities(self) -> Tuple[np.ndarray, np.ndarray]:
+        p_get_trick = np.repeat(np.nan, self.A)
+        p_avoid_trick = np.repeat(np.nan, self.A)
+        for a, c in enumerate(self.legal_cards_to_play):
+            # Would this card get the trick?
+            gets = gets_trick(c, self.cards_on_table, self.cards_by_others)
+            p_get_trick[a] = gets
+            p_avoid_trick[a] = 1 - gets
+
+        assert not any(np.isnan(p_get_trick))
+        assert not any(np.isnan(p_avoid_trick))
+        return p_get_trick, p_avoid_trick
 
 
 def gets_trick(card: Card, table_cards: Iterable[Card], cards_by_others: Iterable[Card]) -> Probability:
