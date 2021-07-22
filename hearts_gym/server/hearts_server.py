@@ -946,7 +946,7 @@ class HeartsServer(TCPServer):
                 Thread(target=simulate_client).start()
 
                 self.print_log('Filled remaining spots with bots.')
-                break
+                continue
 
             if curr_time - last_print_time < self.PRINT_INTERVAL_SEC:
                 continue
