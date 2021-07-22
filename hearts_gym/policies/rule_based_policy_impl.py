@@ -74,25 +74,30 @@ class RulebasedNext(DeterministicPolicyImpl):
         assert not any(np.isnan(p_get_trick))
         assert not any(np.isnan(p_avoid_trick))
 
+        # What would be the penalties of the possible actions?
+        penalty_lower_bound = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
+        # TODO: Determine maximum penalty of the incoming cards
+        # TODO: Determine expected penalty
+
+        # Penalties are int-valued, so we can use values <1 to sort actions of the same penalty based on card "value":
+        action_card_value = np.linspace(0.1, 0, A)
+        # TODO: Write helper function to determine action card values with heuristics.
+
         action_index = None
         ######## HEURISTICS ########
         if sum(penalty_on_table) > 0 and any(p_avoid_trick == 1):
             # There's already a penalty, but we can avoid it so let's do that.
             # Fight off with the most-penalized card that defends successfully.
-            action_index = np.argmax(p_avoid_trick * penalty_of_action_cards)
+            action_index = np.argmin(penalty_lower_bound + action_card_value)
             # TODO: Choose the defense card based on penalty/value:
-            # + Defend with ♠Q if we can.
+            # ☑ Defend with ♠Q if we can.
             # + Defend with a ♥️ (higher is better, except the ♥️A)
             # + Defend with ♣️ or diamond
             # + Don't defend with a ♠ unless we have ♠Q ourselves
         if action_index is None:
-            # What would be the penalties of the possible actions?
-            penalty_outcome = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
-            # TODO: Consider penalties of incoming cards.
-            # TODO: Calculate a second vector [0-1] to describe the "value" of action cards for future rounds.
-
-            # Take the action that minimizes the expected penalties.
-            action_index = np.argmin(penalty_outcome)
+            # There's NO penalty on the table, OR we can't ALWAYS avoid the trick.
+            # Take the action that minimizes the penalties and loss of valuable cards.
+            action_index = np.argmin(penalty_lower_bound + action_card_value)
 
         action_card = legal_cards_to_play[action_index]
 
