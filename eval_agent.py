@@ -35,7 +35,7 @@ from hearts_gym.server.hearts_server import (
 from hearts_gym.utils import ObsTransform
 from hearts_gym.utils.typing import Observation, Reward
 
-SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 5
+SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 15
 
 
 def parse_args() -> Namespace:
