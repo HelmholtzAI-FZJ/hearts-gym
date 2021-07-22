@@ -937,10 +937,10 @@ class HeartsServer(TCPServer):
                 self.fill_most_remaining()
 
                 def simulate_client():
-                    with server_utils.create_client() as client:
-                        client.connect(self.server_address)
+                    with server_utils.create_client() as tmp_client:
+                        tmp_client.connect(self.server_address)
                         server_utils.send_name(
-                            client, self.RANDOM_AGENT_NAME.decode())
+                            tmp_client, self.RANDOM_AGENT_NAME.decode())
                         time.sleep(self.PRINT_INTERVAL_SEC)
 
                 Thread(target=simulate_client).start()
