@@ -23,3 +23,6 @@ environment, follow the following steps:
    the `gym.spaces`
    module](https://github.com/openai/gym/tree/master/gym/spaces) for
    help with this step.
+
+The transformations in `obs_transforms` will be applied in order of
+appearing in the list.
