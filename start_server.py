@@ -115,7 +115,12 @@ def main() -> None:
             ),
             wait_duration_sec=args.wait_duration_sec,
     ) as server:
-        server.serve_forever()
+        try:
+            server.serve_forever()
+        except Exception:
+            pass
+        finally:
+            server.envs.terminate_pool()
 
 
 if __name__ == '__main__':

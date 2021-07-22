@@ -19,7 +19,8 @@ Action = int
 MultiAction = Dict[AgentId, Action]
 
 Observation = Dict[str, Any]
-MultiObservation = Dict[AgentId, Observation]
+# This is mapping to `Any` due to observation transformations.
+MultiObservation = Dict[AgentId, Any]
 Reward = Real
 MultiReward = Dict[AgentId, Reward]
 IsDone = bool

@@ -41,7 +41,7 @@ __all__ = [
     'get_initial_states',
     'compute_actions',
     'evaluate',
-    'print_results_table',
+    'create_results_table',
 ]
 
 EvalResults = Tuple[List[int], List[List[int]], int, int, float]
@@ -407,8 +407,8 @@ def _eval_unstable(
                             'custom_model', '').endswith('_attn')
                     )
             ):
-                for (i, state) in enumerate(states[agent_id]):
-                    states[agent_id][i] = np.vstack((state[1:], state[i]))
+                for (i, prev_state) in enumerate(states[agent_id]):
+                    states[agent_id][i] = np.vstack((prev_state[1:], state[i]))
             else:
                 states[agent_id] = state
             prev_actions[agent_id] = action
@@ -477,13 +477,13 @@ def _strlen(x: Any) -> int:
     return len(str(x))
 
 
-def print_results_table(
+def create_results_table(
         total_penalties: List[int],
         total_placements: List[List[int]],
         policy_mapping_fn: Callable[[AgentId], PolicyID],
         num_illegals: Optional[List[int]] = None,
-) -> None:
-    """Print a table summarizing the given results.
+) -> str:
+    """Return a string table summarizing the given results.
 
     Args:
         total_penalties (List[int]): Total penalties for each player,
@@ -492,6 +492,9 @@ def print_results_table(
             sorted by ranking for each player, sorted by player index.
         policy_mapping_fn (Callable[[AgentId], PolicyID]): Function
             mapping agent IDs to policy IDs.
+
+    Returns:
+        str: Table-formatted string summarizing the given results.
     """
     num_players = len(total_penalties)
     agent_names = [policy_mapping_fn(i) for i in range(num_players)]
@@ -533,8 +536,11 @@ def print_results_table(
         '|',
     ])
 
-    print(row_formatter.format(*header))
-    print(header_separator)
+    table = [
+        row_formatter.format(*header),
+        header_separator,
+    ]
+
     table_values = [
         agent_names,
         total_placements,
@@ -542,6 +548,9 @@ def print_results_table(
     ]
     if num_illegals is not None:
         table_values.append(num_illegals)
+
     for row in zip(*table_values):
         name, placements = row[:2]
-        print(row_formatter.format(name, *placements, *row[2:]))
+        table.append(row_formatter.format(name, *placements, *row[2:]))
+
+    return '\n'.join(table)

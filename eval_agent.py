@@ -9,12 +9,17 @@ import pickle
 import socket
 import sys
 from typing import Any, Dict, List, Optional, Tuple
+import uuid
+from uuid import UUID
 import zlib
 
+import numpy as np
 import ray
 from ray.rllib.agents.trainer import COMMON_CONFIG
-from ray.rllib.utils.typing import TensorType, TrainerConfigDict
+from ray.rllib.models import MODEL_DEFAULTS
+from ray.rllib.utils.typing import PolicyID, TensorType, TrainerConfigDict
 from ray.tune.result import EXPR_PARAM_PICKLE_FILE
+from ray.tune.trainable import Trainable
 
 import configuration as conf
 from configuration import ENV_NAME, LEARNED_POLICY_ID
@@ -27,7 +32,8 @@ from hearts_gym.server.hearts_server import (
     SERVER_ADDRESS,
     PORT,
 )
-from hearts_gym.utils.typing import Reward
+from hearts_gym.utils import ObsTransform
+from hearts_gym.utils.typing import Observation, Reward
 
 SERVER_TIMEOUT_SEC = HeartsServer.PRINT_INTERVAL_SEC + 5
 
@@ -44,7 +50,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         'checkpoint_path',
         type=str,
-        nargs='?' if conf.checkpoint_path is not None else None,
+        nargs='?',
         default=conf.checkpoint_path,
         help='Path of model checkpoint to load for evaluation.',
     )
@@ -77,6 +83,12 @@ def parse_args() -> Namespace:
         type=int,
         default=PORT,
         help='Server port to connect to.',
+    )
+    parser.add_argument(
+        '--policy_id',
+        type=PolicyID,
+        default=LEARNED_POLICY_ID,
+        help='ID of the policy to evaluate.',
     )
 
     return parser.parse_args()
@@ -112,7 +124,10 @@ def _assert_same_envs(
         )
 
 
-def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
+def configure_remote_eval(
+        config: TrainerConfigDict,
+        policy_id: PolicyID,
+) -> TrainerConfigDict:
     """Return the given configuration modified so it has settings useful
     for remote evaluation.
 
@@ -130,7 +145,7 @@ def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
     multiagent_config = utils.get_default(
         eval_config, 'multiagent', COMMON_CONFIG).copy()
     eval_config['multiagent'] = multiagent_config
-    multiagent_config['policy_mapping_fn'] = lambda _: LEARNED_POLICY_ID
+    multiagent_config['policy_mapping_fn'] = lambda _: policy_id
 
     return eval_config
 
@@ -326,21 +341,101 @@ def _update_indices(
         values[i] = new_val
 
 
+def _update_states(
+        agent: Trainable,
+        states: List[List[TensorType]],
+        indices: List[int],
+        new_states: List[List[TensorType]],
+):
+    model_config = utils.get_default(agent.config, 'model', COMMON_CONFIG)
+
+    if (
+            utils.get_default(
+                model_config, 'use_attention', MODEL_DEFAULTS)
+            or (
+                (
+                    utils.get_default(
+                        model_config, 'custom_model', MODEL_DEFAULTS)
+                    is not None
+                )
+                and model_config.get(
+                    'custom_model', '').endswith('_attn')
+            )
+    ):
+        for (i, new_state) in zip(indices, new_states):
+            for (j, (prev_state, state)) in enumerate(
+                    zip(states[i], new_state),
+            ):
+                states[i][j] = np.vstack((prev_state[1:], state))
+    else:
+        _update_indices(states, indices, new_states)
+
+
+def _transform_observations(
+        obs_transforms: List[ObsTransform],
+        remove_action_mask: bool,
+        has_action_mask: bool,
+        observations: List[Observation],
+        uuids: List[UUID],
+) -> None:
+    """Modify the given observations in-place, applying the given
+    transformations and stripping them of the action mask as desired.
+
+    Args:
+        obs_transforms (List[ObsTransform]): Transformations to apply to
+            the raw observations (that is, without the action mask).
+        remove_action_mask (bool): Whether to strip the observations of
+            their action mask.
+        has_action_mask (bool): Whether the observation contain an
+            action mask.
+        observations (List[Observation]): Observations to transform.
+        uuids (List[UUID]): Uniquely identifying IDs of the games
+            being observed.
+    """
+    if has_action_mask:
+        for (i, (obs, uuid_)) in enumerate(zip(observations, uuids)):
+            observations[i][HeartsEnv.OBS_KEY] = utils.apply_obs_transforms(
+                obs_transforms,
+                obs[HeartsEnv.OBS_KEY],
+                0,
+                uuid_,
+            )
+    else:
+        for (i, (obs, uuid_)) in enumerate(zip(observations, uuids)):
+            observations[i] = utils.apply_obs_transforms(
+                obs_transforms,
+                obs,
+                0,
+                uuid_,
+            )
+
+    if remove_action_mask:
+        for (i, obs) in enumerate(observations):
+            observations[i] = obs[HeartsEnv.OBS_KEY]
+
+
 def main() -> None:
     """Connect to a server and play games using a loaded model."""
     args = parse_args()
+    assert (
+        args.checkpoint_path is not None
+        or args.policy_id is not LEARNED_POLICY_ID
+    ), 'need a checkpoint for the learned policy'
     name = args.name
     if name is not None:
         Client.check_name_length(name.encode())
 
     algorithm = args.algorithm
-    checkpoint_path = Path(args.checkpoint_path)
-    assert checkpoint_path.exists(), 'checkpoint file does not exist'
-    assert checkpoint_path.is_file(), \
-        'please pass the checkpoint file, not its directory'
-    checkpoint_path.resolve(True)
-    params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
-    has_params = params_path.is_file()
+    if args.checkpoint_path:
+        checkpoint_path = Path(args.checkpoint_path)
+        assert checkpoint_path.exists(), 'checkpoint file does not exist'
+        assert checkpoint_path.is_file(), \
+            'please pass the checkpoint file, not its directory'
+        checkpoint_path.resolve(True)
+        params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
+        has_params = params_path.is_file()
+    else:
+        has_params = False
 
     ray.init()
 
@@ -374,15 +469,15 @@ def main() -> None:
                 config = pickle.load(params_file)
 
             assert (
-                LEARNED_POLICY_ID
+                args.policy_id
                 in utils.get_default(
                     utils.get_default(config, 'multiagent', COMMON_CONFIG),
                     'policies',
                     COMMON_CONFIG['multiagent'],
                 )
             ), (
-                'cannot find learned policy ID in loaded configuration; '
-                'please configure `LEARNED_POLICY_ID`'
+                'cannot find policy ID in loaded configuration; '
+                'please configure `args.policy_id`'
             )
             _assert_same_envs(config, metadata)
             print('Loaded configuration for checkpoint; to disable, set '
@@ -402,22 +497,28 @@ def main() -> None:
                 'env_config': env_config,
                 'framework': args.framework,
             }
-        config = configure_remote_eval(config)
+        config = configure_remote_eval(config, args.policy_id)
         utils.maybe_set_up_masked_actions_model(algorithm, config)
 
-        agent = utils.load_agent(algorithm, str(checkpoint_path), config)
+        agent = utils.create_agent(algorithm, config)
+        if args.checkpoint_path:
+            agent = utils.load_agent(algorithm, str(checkpoint_path), config)
+
         server_utils.send_ok(client)
         remove_action_mask = (
             mask_actions
             and not utils.get_default(config, 'env_config', COMMON_CONFIG).get(
                 'mask_actions', HeartsEnv.MASK_ACTIONS_DEFAULT)
         )
+        obs_transforms = utils.get_default(
+            config, 'env_config', COMMON_CONFIG).get('obs_transforms', [])
 
         num_iters = 0
         num_games = 0
         while not _is_done(num_games, max_num_games):
-            states: List[TensorType] = [
-                utils.get_initial_state(agent, LEARNED_POLICY_ID)
+            uuids = [uuid.uuid4() for _ in range(num_parallel_games)]
+            states: List[List[TensorType]] = [
+                utils.get_initial_state(agent, args.policy_id)
                 for _ in range(num_parallel_games)
             ]
             prev_actions: List[Optional[TensorType]] = \
@@ -450,13 +551,14 @@ def main() -> None:
                         break
                 assert all(str_player_index in obs for obs in obss), \
                     'received wrong data'
-                if remove_action_mask:
-                    obss = [
-                        obs[str_player_index][HeartsEnv.OBS_KEY]
-                        for obs in obss
-                    ]
-                else:
-                    obss = [obs[str_player_index] for obs in obss]
+                obss = [obs[str_player_index] for obs in obss]
+                _transform_observations(
+                    obs_transforms,
+                    remove_action_mask,
+                    mask_actions,
+                    obss,
+                    _take_indices(uuids, indices),
+                )
                 # print('Received', len(obss), 'observations.')
 
                 masked_prev_actions = _take_indices(prev_actions, indices)
@@ -475,14 +577,14 @@ def main() -> None:
                         if None not in masked_prev_rewards
                         else None
                     ),
-                    policy_id=LEARNED_POLICY_ID,
+                    policy_id=args.policy_id,
                     full_fetch=True,
                 )
                 # print('Actions:', actions)
 
                 server_utils.send_actions(client, actions)
 
-                _update_indices(states, indices, new_states)
+                _update_states(agent, states, indices, new_states)
                 _update_indices(prev_actions, indices, actions)
 
             server_utils.send_ok(client)

@@ -4,6 +4,9 @@ from typing import Dict, Optional
 from ray import tune
 
 from hearts_gym import utils
+from hearts_gym.utils.obs_transforms import ObsTransform
+
+assert utils.DEFAULT_FRAMEWORK is not None
 
 RESULTS_DIR = './results'
 
@@ -25,7 +28,7 @@ checkpoints due to arbitrary code execution. Trade-off between safety
 and convenience.
 """
 
-# "tf", "torch", or "jax", whichever is available (in that order).
+# By default: "tf", "torch", or "jax", whichever is available (in that order).
 framework: str = utils.DEFAULT_FRAMEWORK
 
 custom_rulebased_policies: Dict[str, type] = {
@@ -37,6 +40,8 @@ custom_rulebased_policies: Dict[str, type] = {
 Mapping from policy IDs to classes (not class instances!) implementing
 `hearts_gym.policies.deterministic_policy_impl.DeterministicPolicyImpl`.
 """
+
+obs_transforms: List[ObsTransform] = []
 
 
 # Environment config
@@ -96,6 +101,7 @@ env_config = {
     'deck_size': deck_size,
     'seed': seed,
     'mask_actions': mask_actions,
+    'obs_transforms': obs_transforms,
 }
 
 model_config = {
