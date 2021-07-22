@@ -2,6 +2,7 @@ from hearts_gym.policies.rule_based_policy_impl import (
     RulebasedV1,
     RulebasedV2,
     RulebasedV3,
+    RulebasedV4,
 )
 from typing import Dict, List, Optional
 
@@ -39,6 +40,7 @@ custom_rulebased_policies: Dict[str, type] = {
     "rulebasedV1": RulebasedV1,
     "rulebasedV2": RulebasedV2,
     "rulebasedV3": RulebasedV3,
+    "rulebasedV4": RulebasedV4,
 }
 """Dictionary of custom rule-based policies.
 
