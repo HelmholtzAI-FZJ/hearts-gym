@@ -17,7 +17,7 @@ import numpy as np
 import ray
 from ray.rllib.agents.trainer import COMMON_CONFIG
 from ray.rllib.models import MODEL_DEFAULTS
-from ray.rllib.utils.typing import TensorType, TrainerConfigDict
+from ray.rllib.utils.typing import PolicyID, TensorType, TrainerConfigDict
 from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 from ray.tune.trainable import Trainable
 
@@ -50,11 +50,7 @@ def parse_args() -> Namespace:
     parser.add_argument(
         'checkpoint_path',
         type=str,
-        nargs=(
-            '?'  # type: ignore[arg-type]
-            if conf.checkpoint_path is not None
-            else None
-        ),
+        nargs='?',
         default=conf.checkpoint_path,
         help='Path of model checkpoint to load for evaluation.',
     )
@@ -87,6 +83,12 @@ def parse_args() -> Namespace:
         type=int,
         default=PORT,
         help='Server port to connect to.',
+    )
+    parser.add_argument(
+        '--policy_id',
+        type=PolicyID,
+        default=LEARNED_POLICY_ID,
+        help='ID of the policy to evaluate.',
     )
 
     return parser.parse_args()
@@ -122,7 +124,10 @@ def _assert_same_envs(
         )
 
 
-def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
+def configure_remote_eval(
+        config: TrainerConfigDict,
+        policy_id: PolicyID,
+) -> TrainerConfigDict:
     """Return the given configuration modified so it has settings useful
     for remote evaluation.
 
@@ -140,7 +145,7 @@ def configure_remote_eval(config: TrainerConfigDict) -> TrainerConfigDict:
     multiagent_config = utils.get_default(
         eval_config, 'multiagent', COMMON_CONFIG).copy()
     eval_config['multiagent'] = multiagent_config
-    multiagent_config['policy_mapping_fn'] = lambda _: LEARNED_POLICY_ID
+    multiagent_config['policy_mapping_fn'] = lambda _: policy_id
 
     return eval_config
 
@@ -412,18 +417,25 @@ def _transform_observations(
 def main() -> None:
     """Connect to a server and play games using a loaded model."""
     args = parse_args()
+    assert (
+        args.checkpoint_path is not None
+        or args.policy_id is not LEARNED_POLICY_ID
+    ), 'need a checkpoint for the learned policy'
     name = args.name
     if name is not None:
         Client.check_name_length(name.encode())
 
     algorithm = args.algorithm
-    checkpoint_path = Path(args.checkpoint_path)
-    assert checkpoint_path.exists(), 'checkpoint file does not exist'
-    assert checkpoint_path.is_file(), \
-        'please pass the checkpoint file, not its directory'
-    checkpoint_path.resolve(True)
-    params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
-    has_params = params_path.is_file()
+    if args.checkpoint_path:
+        checkpoint_path = Path(args.checkpoint_path)
+        assert checkpoint_path.exists(), 'checkpoint file does not exist'
+        assert checkpoint_path.is_file(), \
+            'please pass the checkpoint file, not its directory'
+        checkpoint_path.resolve(True)
+        params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
+        has_params = params_path.is_file()
+    else:
+        has_params = False
 
     ray.init()
 
@@ -457,15 +469,15 @@ def main() -> None:
                 config = pickle.load(params_file)
 
             assert (
-                LEARNED_POLICY_ID
+                args.policy_id
                 in utils.get_default(
                     utils.get_default(config, 'multiagent', COMMON_CONFIG),
                     'policies',
                     COMMON_CONFIG['multiagent'],
                 )
             ), (
-                'cannot find learned policy ID in loaded configuration; '
-                'please configure `LEARNED_POLICY_ID`'
+                'cannot find policy ID in loaded configuration; '
+                'please configure `args.policy_id`'
             )
             _assert_same_envs(config, metadata)
             print('Loaded configuration for checkpoint; to disable, set '
@@ -485,10 +497,13 @@ def main() -> None:
                 'env_config': env_config,
                 'framework': args.framework,
             }
-        config = configure_remote_eval(config)
+        config = configure_remote_eval(config, args.policy_id)
         utils.maybe_set_up_masked_actions_model(algorithm, config)
 
-        agent = utils.load_agent(algorithm, str(checkpoint_path), config)
+        agent = utils.create_agent(algorithm, config)
+        if args.checkpoint_path:
+            agent = utils.load_agent(algorithm, str(checkpoint_path), config)
+
         server_utils.send_ok(client)
         remove_action_mask = (
             mask_actions
@@ -503,7 +518,7 @@ def main() -> None:
         while not _is_done(num_games, max_num_games):
             uuids = [uuid.uuid4() for _ in range(num_parallel_games)]
             states: List[List[TensorType]] = [
-                utils.get_initial_state(agent, LEARNED_POLICY_ID)
+                utils.get_initial_state(agent, args.policy_id)
                 for _ in range(num_parallel_games)
             ]
             prev_actions: List[Optional[TensorType]] = \
@@ -562,7 +577,7 @@ def main() -> None:
                         if None not in masked_prev_rewards
                         else None
                     ),
-                    policy_id=LEARNED_POLICY_ID,
+                    policy_id=args.policy_id,
                     full_fetch=True,
                 )
                 # print('Actions:', actions)
