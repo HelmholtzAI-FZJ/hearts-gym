@@ -1,3 +1,4 @@
+from hearts_gym.policies.rule_based_policy_impl import RulebasedNext, RulebasedPrevious
 from typing import Dict, Optional
 
 from ray import tune
@@ -27,7 +28,10 @@ and convenience.
 # "tf", "torch", or "jax", whichever is available (in that order).
 framework: str = utils.DEFAULT_FRAMEWORK
 
-custom_rulebased_policies: Dict[str, type] = {}
+custom_rulebased_policies: Dict[str, type] = {
+    "rulebasedNext": RulebasedNext,
+    "rulebasedPrevious": RulebasedPrevious,
+}
 """Dictionary of custom rule-based policies.
 
 Mapping from policy IDs to classes (not class instances!) implementing
@@ -42,14 +46,25 @@ deck_size = 52
 seed = 0
 mask_actions = True
 
-policy_mapping_fn = utils.create_policy_mapping(
-    'all_learned',
-    # 'one_learned_rest_random',
-    LEARNED_AGENT_ID,
-    LEARNED_POLICY_ID,
-    RANDOM_POLICY_ID,
-    RULEBASED_POLICY_ID,
-)
+POLICY_MAPPING = {
+    0: "rulebasedNext",
+    1: "rulebasedPrevious",
+    2: "random",
+    3: "random",
+}
+def policy_mapping_fn(agent_id):
+    return POLICY_MAPPING[agent_id]
+
+
+EVAL_POLICY_MAPPING = {
+    0: "rulebasedNext",
+    1: "rulebasedPrevious",
+    2: "random",
+    3: "random",
+}
+def eval_policy_mapping_fn(agent_id):
+    return EVAL_POLICY_MAPPING[agent_id]
+
 
 random_policy_seed = None
 
@@ -58,13 +73,6 @@ random_policy_seed = None
 
 eval_seed = seed + 1
 num_test_games = 5000
-eval_policy_mapping_fn = utils.create_policy_mapping(
-    'one_learned_rest_random',
-    LEARNED_AGENT_ID,
-    LEARNED_POLICY_ID,
-    RANDOM_POLICY_ID,
-    RULEBASED_POLICY_ID,
-)
 
 use_stable_method = False
 """Whether to use RLlib's implementation ('stable') or a
