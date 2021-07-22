@@ -997,6 +997,12 @@ class HeartsServer(TCPServer):
             request: Request,
             client_address: Address,
     ) -> None:
+        if all(
+                isinstance(client.request, MockRequest)
+                for client in self.clients.values()
+        ):
+            self.clients.clear()
+
         self.logger.info(f'Registering {client_address}...')
         client = self.register_client(request, client_address)
         if client is None:
