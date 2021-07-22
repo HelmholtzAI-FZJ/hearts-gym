@@ -388,10 +388,12 @@ class HeartsServer(TCPServer):
 
         Args:
             client (Client): Client to unregister.
-            replace_with_bot (bool): Whether to replace a lost client with a
-                simulated agent.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
         """
         with self._client_change_lock:
+            if not client.is_registered:
+                return
             client_index = client.player_index
 
             self.shutdown_request(client.request)  # type: ignore[attr-defined]
@@ -429,17 +431,16 @@ class HeartsServer(TCPServer):
             Optional[bytes]: The message received or `None` if there was
                 an error.
         """
-        request = client.request
-        prev_timeout = request.gettimeout()
-        request.settimeout(timeout_sec)
+        prev_timeout, _ = self._get_timeout_failable(client, replace_with_bot)
+        self._set_timeout_failable(client, timeout_sec, replace_with_bot)
 
         try:
-            data = request.recv(max_receive_bytes)
+            data = client.request.recv(max_receive_bytes)
             if data == b'' or data is None:
                 raise ValueError('received empty data')
         except socket.timeout:
-            request.settimeout(prev_timeout)
-            self.send_failable(client, client_error_msg)
+            self._set_timeout_failable(client, prev_timeout, replace_with_bot)
+            self._send_failable(client, client_error_msg, replace_with_bot)
             self.logger.warning(
                 f'Client {client.address} did not respond in time.')
             self.unregister_client(client, replace_with_bot)
@@ -449,7 +450,7 @@ class HeartsServer(TCPServer):
             self.unregister_client(client, replace_with_bot)
             return None
 
-        request.settimeout(prev_timeout)
+        self._set_timeout_failable(client, prev_timeout, replace_with_bot)
         return data
 
     def _receive_msg_length(
@@ -517,13 +518,14 @@ class HeartsServer(TCPServer):
             length_end = data_shard.find(server_utils.MSG_LENGTH_SEPARATOR)
 
         if length_end == -1:
-            self.send_failable(
+            self._send_failable(
                 client,
                 (
                     f'Please prefix messages with unknown length with '
                     f'their length and '
                     f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
-                )
+                ),
+                replace_with_bot,
             )
             self.logger.warning(
                 f'Client {client.address} did not send message length. '
@@ -537,13 +539,14 @@ class HeartsServer(TCPServer):
         try:
             msg_length = int(data[:length_end])
         except ValueError:
-            self.send_failable(
+            self._send_failable(
                 client,
                 (
                     f'Please prefix messages with unknown length with '
                     f'only their length and '
                     f'"{server_utils.MSG_LENGTH_SEPARATOR.decode()}".'
-                )
+                ),
+                replace_with_bot,
             )
             self.logger.warning(
                 f'Client {client.address} sent garbled message length. '
@@ -719,12 +722,13 @@ class HeartsServer(TCPServer):
         if data == server_utils.OK_MSG:
             return True
 
-        self.send_failable(
+        self._send_failable(
             client,
             (
                 f'Please respond with "{server_utils.OK_MSG.decode()}"; '
                 f'closing connection...'
             ),
+            replace_with_bot,
         )
         self.unregister_client(client, replace_with_bot)
         return False
@@ -811,6 +815,104 @@ class HeartsServer(TCPServer):
         self.send_failable(client, metadata)
         self.receive_ok(client, self.SETUP_OK_TIMEOUT_SEC)
 
+    def _get_timeout_failable(
+            self,
+            client: Client,
+            replace_with_bot: bool,
+    ) -> Tuple[Optional[int], bool]:
+        """Return the currently set timeout of the given client's socket
+        and whether the query was successful.
+
+        When the query does not succeed, the returned timeout is `None`
+        and the client will be unregistered, optionally replacing it
+        with a random bot according to `replace_with_bot`.
+
+        Args:
+            client (Client): Client to query socket timeout for.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
+
+        Returns:
+            Optional[int]: Timeout of the client's socket in seconds.
+            bool: Whether the query was successful and the client was
+                not lost.
+        """
+        try:
+            return client.request.gettimeout(), True
+        except Exception:
+            self.logger.warning(f'Lost client {client.address}.')
+            self.unregister_client(client, replace_with_bot)
+            return None, False
+
+    def _set_timeout_failable(
+            self,
+            client: Client,
+            timeout_sec: Optional[int],
+            replace_with_bot: bool,
+    ) -> bool:
+        """Set the timeout of the given client's socket and return
+        whether the operation was successful.
+
+        Upon error, optionally replace the client with a simulated agent.
+
+        Args:
+            client (Client): Client to query socket timeout for.
+            timeout_sec (Optional[int]): New timeout to set in seconds.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
+
+        Returns:
+            bool: Whether setting the timeout was successful and the
+                client was not lost.
+        """
+        if not client.is_registered:
+            return False
+        try:
+            client.request.settimeout(timeout_sec)
+            return True
+        except Exception:
+            self.logger.warning(f'Lost client {client.address}.')
+            self.unregister_client(client, replace_with_bot)
+            return False
+
+    def set_timeout_failable(
+            self,
+            client: Client,
+            timeout_sec: Optional[int],
+    ) -> bool:
+        """Set the timeout of the given client's socket and return
+        whether the operation was successful.
+
+        Args:
+            client (Client): Client to query socket timeout for.
+            timeout_sec (Optional[int]): New timeout to set in seconds.
+
+        Returns:
+            bool: Whether setting the timeout was successful and the
+                client was not lost.
+        """
+        return self._set_timeout_failable(client, timeout_sec, False)
+
+    def set_timeout_failable_replacing(
+            self,
+            client: Client,
+            timeout_sec: Optional[int],
+    ) -> bool:
+        """Set the timeout of the given client's socket and return
+        whether the operation was successful.
+
+        Upon error, replace the client with a simulated agent.
+
+        Args:
+            client (Client): Client to query socket timeout for.
+            timeout_sec (Optional[int]): New timeout to set in seconds.
+
+        Returns:
+            bool: Whether setting the timeout was successful and the
+                client was not lost.
+        """
+        return self._set_timeout_failable(client, timeout_sec, True)
+
     def _send_failable(
             self,
             client: Client,
@@ -825,12 +927,14 @@ class HeartsServer(TCPServer):
         Args:
             client (Client): Client to send the data to.
             data (Any): Data to send to the client.
-            replace_with_bot (bool): Whether to replace a lost client with a
-                simulated agent.
+            replace_with_bot (bool): Whether to replace a lost client
+                with a simulated agent.
 
         Returns:
             bool: Whether the data was correctly sent to the client.
         """
+        if not client.is_registered:
+            return False
         try:
             if not isinstance(data, bytes):
                 data = server_utils.encode_data(data)
@@ -1094,7 +1198,8 @@ class HeartsRequestHandler(BaseRequestHandler):
             + len(server_utils.MSG_LENGTH_SEPARATOR)
         )
         for client in self.server.clients.values():
-            client.request.settimeout(self.ACTION_TIMEOUT_SEC)
+            self.server.set_timeout_failable_replacing(
+                client, self.ACTION_TIMEOUT_SEC)
 
         num_players = len(self.server.clients)
         self._communicators = ThreadPool(processes=num_players)
