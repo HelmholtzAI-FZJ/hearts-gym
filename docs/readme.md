@@ -29,7 +29,9 @@ python -m pydoc hearts_gym.envs.hearts_game.HeartsGame
 Supported Python versions are shown in `setup.py` under the
 `python_requires` argument. If your system does not have the correct
 version (it will complain at some point during the installation), you
-can [use the Conda installation instructions](#conda-installation).
+can [use the Conda installation instructions](#conda-installation). If
+you are using Conda already, you also have to use the Conda
+installation instructions.
 
 ### Environment Setup
 
