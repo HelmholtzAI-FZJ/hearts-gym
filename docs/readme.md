@@ -227,10 +227,6 @@ different shells or allow the server to use simulated agents. When a
 client disconnects during games, they will be replaced with a randomly
 acting agent.
 
-The evaluation statistics are currently not communicated to the
-clients, so either log them on the client or check the server output
-for more information.
-
 ### Configuration
 
 In `configuration.py`, you will find several configuration options and
