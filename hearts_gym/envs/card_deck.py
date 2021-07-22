@@ -113,6 +113,9 @@ class Card:
     def __repr__(self) -> str:
         return 'Card(' + str(self.suit) + ', ' + str(self.rank) + ')'
 
+    def __hash__(self) -> int:
+        return hash((self.suit, self.rank))
+
 
 class Deck:
     """A standard playing card deck."""

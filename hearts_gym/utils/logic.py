@@ -1,5 +1,6 @@
+import enum
 import numpy as np
-from typing import Optional, Tuple, Iterable
+from typing import Optional, Tuple, Iterable, List
 
 from hearts_gym.envs.card_deck import Card
 
@@ -22,6 +23,71 @@ ALWAYS = Certainty.ALWAYS
 MAYBE = Certainty.MAYBE
 NEVER = Certainty.NEVER
 
+CARDS = tuple(
+    Card(s, r)
+    for s in range(Card.NUM_SUITS)
+    for r in range(Card.NUM_RANKS)
+)
+
+class Player(enum.IntEnum):
+    US = 0
+    P1 = 1
+    P2 = 2
+    P3 = 3
+
+    @staticmethod
+    def from_offset(offset: int):
+        return Player(offset % 4)
+
+
+class Ownerships:
+    # TODO: implement Ownership tracking over rounds
+
+    def __init__(self, probs: np.ndarray) -> None:
+        self.probs = probs
+        super().__init__()
+
+    def has_suit(self, player: Player, suit: int) -> Probability:
+        return Probability(1 - np.prod([
+            1 - p
+            for c, p in zip(CARDS, self.probs[:, player])
+            if c.suit == suit
+        ]))
+
+    def has_card_above(self, player: Player, card: Card) -> Probability:
+        return Probability(1 - np.prod([
+            1 - p
+            for c, p in zip(CARDS, self.probs[:, player])
+            if c.suit == card.suit and c.rank > card.rank
+        ]))
+
+    def has_card(self, player: Player, card: Card) -> Probability:
+        return Probability(self.probs[CARDS.index(card), player])
+
+    @staticmethod
+    def from_trick(*, hand: Iterable[Card], trick: Iterable[Card], played: Iterable[Card], unseen: Iterable[Card]):
+        """
+        Infer ownerships of cards without knowing the history of the game.
+
+        Can be used to create the Ownership object in the first round.
+        """
+        played = set(played)
+        table = set(trick)
+        hand = set(hand)
+        unseen = set(unseen)
+        assert played | table | hand | unseen == set(CARDS)
+
+        probs = np.zeros((Card.NUM_SUITS * Card.NUM_RANKS, 4), dtype=float)
+        for c, card in enumerate(CARDS):
+            if card in hand:
+                probs[c] = [1, 0, 0, 0]
+            elif card in table or card in played:
+                probs[c] = 0
+            else:
+                # TODO: 1/3 is only correct if the table is empty
+                probs[c] = [0, 1/3, 1/3, 1/3]
+        return Ownerships(probs)
+
 
 class DeepState:
     def __init__(self, game) -> None:
@@ -42,6 +108,7 @@ class DeepState:
         assert np.shape(self.legal_indices_to_play) == (self.A,), f"shape was {np.shape(self.legal_indices_to_play)}"
         assert np.shape(self.penalty_on_table) == (self.T,), f"shape was {np.shape(self.penalty_on_table)}"
         assert np.shape(self.penalty_of_action_cards) == (self.A,), f"shape was {np.shape(self.penalty_of_action_cards)}"
+
         super().__init__()
 
     def calculate_get_avoid_probabilities(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -96,7 +163,7 @@ def gets_trick(card: Card, table_cards: Iterable[Card], cards_by_others: Iterabl
         # - Because we don't know which players hold onto the remaining cards, we can't filter down to only the
         #   cards that could "legally" be played.
         # - The "unplayed cards" also include cards by players that have already played in this trick.
-        
+
         # The tradeoff:
         # Assume that the upcoming cards will be drawn randomly from the remaining cards.
         return p_gets_trick(
