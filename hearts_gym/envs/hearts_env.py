@@ -443,7 +443,7 @@ class HeartsEnv(MultiAgentEnv):
             player_reward = self.reward_function(
                 ready_player_index,
                 active_player_index,
-                trick_winner_index is not None,
+                trick_is_done,
             )
             reward[ready_player_index] = player_reward
 
