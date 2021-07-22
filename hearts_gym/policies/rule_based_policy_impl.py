@@ -36,7 +36,7 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     pass
 
 
-logfile = pathlib.Path("logs", f"logfile_{os.getpid()}.txt").open("w")
+logfile = pathlib.Path("logs", f"logfile_{os.getpid()}.log").open("w")
 
 
 class RulebasedNext(DeterministicPolicyImpl):
@@ -74,39 +74,36 @@ class RulebasedNext(DeterministicPolicyImpl):
         assert not any(np.isnan(p_get_trick))
         assert not any(np.isnan(p_avoid_trick))
 
-        action = None
+        action_index = None
         ######## HEURISTICS ########
         if sum(penalty_on_table) > 0 and any(p_avoid_trick == 1):
             # There's already a penalty, but we can avoid it so let's do that.
             # Fight off with the most-penalized card that defends successfully.
-            action = legal_indices_to_play[np.argmax(p_avoid_trick * penalty_of_action_cards)]
+            action_index = np.argmax(p_avoid_trick * penalty_of_action_cards)
             # TODO: Choose the defense card based on penalty/value:
             # + Defend with ♠Q if we can.
             # + Defend with a ♥️ (higher is better, except the ♥️A)
             # + Defend with ♣️ or diamond
             # + Don't defend with a ♠ unless we have ♠Q ourselves
-        if action is None:
+        if action_index is None:
             # What would be the penalties of the possible actions?
             penalty_outcome = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
             # TODO: Consider penalties of incoming cards.
             # TODO: Calculate a second vector [0-1] to describe the "value" of action cards for future rounds.
 
             # Take the action that minimizes the expected penalties.
-            action = legal_indices_to_play[np.argmin(penalty_outcome)]
+            action_index = np.argmin(penalty_outcome)
 
         logfile.write(textwrap.dedent(f"""
         table  : {cards_on_table}
         actions: {legal_cards_to_play}
         p_get  : {p_get_trick.tolist()}
         p_avoid: {p_avoid_trick.tolist()}
-        action : {action}
+        action : {legal_cards_to_play[action_index]}
         """))
         logfile.flush()
 
-        if action is None:
-            # Heuristics did not conclude. Let's make an unpredictable move! 😈
-            return np.random.choice(legal_indices_to_play)
-        return action
+        return legal_indices_to_play[action_index]
 
 
 
