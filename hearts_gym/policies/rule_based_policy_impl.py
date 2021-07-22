@@ -18,7 +18,7 @@ import pathlib
 import numpy as np
 import os
 
-from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE, p_gets_trick
+from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE, p_gets_trick, DeepState
 
 class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     """A rule-based policy implementation yielding deterministic actions
@@ -39,53 +39,23 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
 logfile = pathlib.Path("logs", f"logfile_{os.getpid()}.log").open("w")
 
 
-class RulebasedNext(DeterministicPolicyImpl):
+class RulebasedV2(DeterministicPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
-        # Collect some observations about the current round
-        cards_on_hand = np.array(self.game.hand)
-        cards_on_table = np.array(self.game.table_cards)
-        unseen_cards = self.game.unknown_cards
-        cards_by_others = [c for c in unseen_cards if c not in cards_on_hand]
-        legal_indices_to_play = np.array(self.game.get_legal_actions())
-        legal_cards_to_play = [cards_on_hand[i] for i in legal_indices_to_play]
-        penalty_on_table = np.array([self.game.get_penalty(c) for c in cards_on_table])
-        penalty_of_action_cards = np.array([self.game.get_penalty(c) for c in legal_cards_to_play])
-
-        # Some constants for easier iterations or slicing
-        T = len(cards_on_table)
-        H = len(cards_on_hand)
-        A = len(legal_indices_to_play)
-
-        assert np.shape(legal_cards_to_play) == (A,), f"shape was {np.shape(penalty_of_action_cards)}"
-        assert np.shape(legal_indices_to_play) == (A,), f"shape was {np.shape(legal_indices_to_play)}"
-        assert np.shape(penalty_on_table) == (T,), f"shape was {np.shape(penalty_on_table)}"
-        assert np.shape(penalty_of_action_cards) == (A,), f"shape was {np.shape(penalty_of_action_cards)}"
-
-        # Probabilities of certain outcomes (NaN means unknown).
-        p_get_trick = np.repeat(np.nan, A)
-        p_avoid_trick = np.repeat(np.nan, A)
-        for a, c in enumerate(legal_cards_to_play):
-            # Would this card get the trick?
-            gets = gets_trick(c, cards_on_table, cards_by_others)
-            p_get_trick[a] = gets
-            p_avoid_trick[a] = 1 - gets
-
-
-        assert not any(np.isnan(p_get_trick))
-        assert not any(np.isnan(p_avoid_trick))
+        ds = DeepState(self.game)
+        p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
 
         # What would be the penalties of the possible actions?
-        penalty_lower_bound = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
+        penalty_lower_bound = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
         # TODO: Determine maximum penalty of the incoming cards
         # TODO: Determine expected penalty
 
         # Penalties are int-valued, so we can use values <1 to sort actions of the same penalty based on card "value":
-        action_card_value = np.linspace(0.1, 0, A)
+        action_card_value = np.linspace(0.1, 0, ds.A)
         # TODO: Write helper function to determine action card values with heuristics.
 
         action_index = None
         ######## HEURISTICS ########
-        if sum(penalty_on_table) > 0 and any(p_avoid_trick == 1):
+        if sum(ds.penalty_on_table) > 0 and any(p_avoid_trick == 1):
             # There's already a penalty, but we can avoid it so let's do that.
             # Fight off with the most-penalized card that defends successfully.
             action_index = np.argmin(penalty_lower_bound + action_card_value)
@@ -99,46 +69,31 @@ class RulebasedNext(DeterministicPolicyImpl):
             # Take the action that minimizes the penalties and loss of valuable cards.
             action_index = np.argmin(penalty_lower_bound + action_card_value)
 
-        action_card = legal_cards_to_play[action_index]
+        action_card = ds.legal_cards_to_play[action_index]
 
         logfile.write(textwrap.dedent(f"""
-        table  : {cards_on_table}
-        actions: {legal_cards_to_play}
+        table  : {ds.cards_on_table}
+        actions: {ds.legal_cards_to_play}
         p_get  : {p_get_trick.tolist()}
         p_avoid: {p_avoid_trick.tolist()}
         action : Card({action_card.suit}, {action_card.rank})
         """))
         logfile.flush()
 
-        return legal_indices_to_play[action_index]
+        return ds.legal_indices_to_play[action_index]
 
 
 
-class RulebasedPrevious(DeterministicPolicyImpl):
+class RulebasedV1(DeterministicPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
-        # Collect some observations about the current round
-        cards_on_hand = np.array(self.game.hand)
-        cards_on_table = np.array(self.game.table_cards)
-        legal_indices_to_play = np.array(self.game.get_legal_actions())
-        legal_cards_to_play = [cards_on_hand[i] for i in legal_indices_to_play]
-        penalty_on_table = np.array([self.game.get_penalty(c) for c in cards_on_table])
-        penalty_of_action_cards = np.array([self.game.get_penalty(c) for c in legal_cards_to_play])
-        highest_rank_on_table = max(c.rank for c in cards_on_table) if len(cards_on_table) else -1
+        ds = DeepState(self.game)
 
-        # Some constants for easier iterations or slicing
-        T = len(cards_on_table)
-        H = len(cards_on_hand)
-        A = len(legal_indices_to_play)
-
-        assert np.shape(legal_cards_to_play) == (A,), f"shape was {np.shape(penalty_of_action_cards)}"
-        assert np.shape(legal_indices_to_play) == (A,), f"shape was {np.shape(legal_indices_to_play)}"
-        assert np.shape(penalty_on_table) == (T,), f"shape was {np.shape(penalty_on_table)}"
-        assert np.shape(penalty_of_action_cards) == (A,), f"shape was {np.shape(penalty_of_action_cards)}"
+        highest_rank_on_table = max(c.rank for c in ds.cards_on_table) if len(ds.cards_on_table) else -1
 
         # Probabilities of certain outcomes (NaN means unknown).
-        p_get_trick = np.repeat(np.nan, A)
-        p_avoid_trick = np.repeat(np.nan, A)
-        for a, c in enumerate(legal_cards_to_play):
+        p_get_trick = np.repeat(np.nan, ds.A)
+        p_avoid_trick = np.repeat(np.nan, ds.A)
+        for a, c in enumerate(ds.legal_cards_to_play):
             # Can this card definitely fight off the trick?
             if (
                 c.suit != self.game.leading_suit
@@ -151,7 +106,7 @@ class RulebasedPrevious(DeterministicPolicyImpl):
             elif (
                 c.suit == self.game.leading_suit
                 and c.rank > highest_rank_on_table
-                and len(cards_on_table) == self.game.num_players - 1
+                and len(ds.cards_on_table) == self.game.num_players - 1
             ):
                 p_get_trick[a] = 1
                 p_avoid_trick[a] = 0
@@ -163,22 +118,22 @@ class RulebasedPrevious(DeterministicPolicyImpl):
         ######## HEURISTICS ########
         if not all(np.isnan(p_avoid_trick)):
             # There's already a penalty, but we can avoid it let's do that.
-            a = sum(penalty_on_table) > 0
+            a = sum(ds.penalty_on_table) > 0
             b = any(p_avoid_trick == 1)
             if a and b:
                 # Fight off with the most-penalized card that defends successfully.
-                return legal_indices_to_play[np.nanargmax(p_avoid_trick * penalty_of_action_cards)]
+                return ds.legal_indices_to_play[np.nanargmax(p_avoid_trick * ds.penalty_of_action_cards)]
 
 
         if not all(np.isnan(p_get_trick)):
             # What would be the penalties of the possible actions?
-            penalty_outcome = sum(penalty_on_table) + p_get_trick * penalty_of_action_cards
-            assert np.shape(penalty_outcome) == (A,), f"penalty_outcome.shape was {np.shape(penalty_outcome)}"
+            penalty_outcome = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
+            assert np.shape(penalty_outcome) == (ds.A,), f"penalty_outcome.shape was {np.shape(penalty_outcome)}"
             if any(penalty_outcome == 0):
                 # There's no penalty, and we can take the tick without taking a penalty 🎉
-                return np.random.choice(legal_indices_to_play[penalty_outcome == 0])
+                return np.random.choice(ds.legal_indices_to_play[penalty_outcome == 0])
 
         # Heuristics did not conclude. Let's make an unpredictable move! 😈
-        return np.random.choice(legal_indices_to_play)
+        return np.random.choice(ds.legal_indices_to_play)
 
 

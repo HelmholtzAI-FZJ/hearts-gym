@@ -1,5 +1,5 @@
-from hearts_gym.policies.rule_based_policy_impl import RulebasedNext, RulebasedPrevious
-from typing import Dict, Optional
+from hearts_gym.policies.rule_based_policy_impl import RulebasedV1, RulebasedV2
+from typing import Dict, List, Optional
 
 from ray import tune
 
@@ -32,8 +32,8 @@ and convenience.
 framework: str = utils.DEFAULT_FRAMEWORK
 
 custom_rulebased_policies: Dict[str, type] = {
-    "rulebasedNext": RulebasedNext,
-    "rulebasedPrevious": RulebasedPrevious,
+    "rulebasedV1": RulebasedV1,
+    "rulebasedV2": RulebasedV2,
 }
 """Dictionary of custom rule-based policies.
 
