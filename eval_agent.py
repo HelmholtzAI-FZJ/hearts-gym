@@ -18,6 +18,7 @@ import ray
 from ray.rllib.agents.trainer import COMMON_CONFIG
 from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.utils.typing import PolicyID, TensorType, TrainerConfigDict
+from ray.tune.registry import has_trainable
 from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 from ray.tune.trainable import Trainable
 
@@ -432,8 +433,14 @@ def main() -> None:
         assert checkpoint_path.is_file(), \
             'please pass the checkpoint file, not its directory'
         checkpoint_path.resolve(True)
-        params_path = checkpoint_path.parent.parent / EXPR_PARAM_PICKLE_FILE
+        exp_dir = checkpoint_path.parent.parent
+        params_path = exp_dir / EXPR_PARAM_PICKLE_FILE
         has_params = params_path.is_file()
+
+        algorithm_name_dir = exp_dir.parent
+        algorithm_name = algorithm_name_dir.stem
+        if algorithm_name_dir.is_dir() and has_trainable(algorithm_name):
+            algorithm = algorithm_name
     else:
         has_params = False
 
