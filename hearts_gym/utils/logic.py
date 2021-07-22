@@ -188,6 +188,15 @@ def filter_cards_above(cards: Iterable[Card], ref_suit:int, ref_rank: int) -> Tu
     )
 
 
+def filter_cards_below(cards: Iterable[Card], ref_suit:int, ref_rank: int) -> Tuple[Card]:
+    """Returns all elements from `cards` that have the same suit, and a higher rank."""
+    return tuple(
+        c
+        for c in cards
+        if c.suit != ref_suit or c.rank < ref_rank
+    )
+
+
 def p_gets_trick(
     n_others_higher: int,
     n_others_lower: int,
