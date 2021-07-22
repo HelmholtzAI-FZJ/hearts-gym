@@ -1,4 +1,3 @@
-from hearts_gym.policies.observed_game import ObservedGame
 import numpy as np
 from typing import Optional, Tuple, Iterable
 
@@ -25,7 +24,7 @@ NEVER = Certainty.NEVER
 
 
 class DeepState:
-    def __init__(self, game: ObservedGame) -> None:
+    def __init__(self, game) -> None:
         self.game = game
         self.cards_on_hand = np.array(self.game.hand)
         self.cards_on_table = np.array(self.game.table_cards)
@@ -135,3 +134,13 @@ def p_gets_trick(
     if p_lower == 0:
         return NEVER
     return p_lower ** n_incoming
+
+
+def expected_inbound_penalty(
+    card_penalties: np.ndarray,
+    n_inbound: int,
+) -> np.ndarray:
+    """Elementwise contributions of penalty after drawing without replacement `n_inbound` times."""
+    card_penalties = np.array(card_penalties)
+    p_drawn = n_inbound / len(card_penalties)
+    return card_penalties * p_drawn

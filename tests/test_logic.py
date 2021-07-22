@@ -1,7 +1,7 @@
 import pytest
-
+import numpy as np
 from hearts_gym.envs.hearts_game import Card
-from hearts_gym.utils.logic import Probability, Certainty, ALWAYS, NEVER, MAYBE, filter_cards_above, gets_trick, p_gets_trick
+from hearts_gym.utils.logic import Probability, Certainty, ALWAYS, NEVER, MAYBE, expected_inbound_penalty, filter_cards_above, gets_trick, p_gets_trick
 
 # Suits
 A, B, C, D = 0, 1, 2, 3
@@ -192,4 +192,20 @@ def test_p_gets_trick():
         p_gets_trick(5, 3, 0)
     assert p_gets_trick(5, 5, 1) == 0.5
     assert p_gets_trick(2, 2, 2) == 0.25
+    pass
+
+
+def test_expected_inbound_penalty():
+    np.testing.assert_array_equal(expected_inbound_penalty(
+        card_penalties=[0, 1.5, 0],
+        n_inbound=3
+    ), [0, 1.5, 0])
+    np.testing.assert_array_equal(expected_inbound_penalty(
+        card_penalties=[0, 1.5, 0],
+        n_inbound=1
+    ), [0, 0.5, 0])
+    np.testing.assert_array_equal(expected_inbound_penalty(
+        card_penalties=[0, 0, 1, 2],
+        n_inbound=2
+    ), [0, 0, 0.5, 1])
     pass
