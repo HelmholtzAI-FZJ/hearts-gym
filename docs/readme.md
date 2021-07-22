@@ -227,6 +227,10 @@ different shells or allow the server to use simulated agents. When a
 client disconnects during games, they will be replaced with a randomly
 acting agent.
 
+To evaluate another policy, you do not need to supply a checkpoint.
+Instead, give its policy ID using `--policy_id <policy-id>`, replacing
+`<policy-id>` with the ID of the policy to evaluate.
+
 ### Configuration
 
 In `configuration.py`, you will find several configuration options and
