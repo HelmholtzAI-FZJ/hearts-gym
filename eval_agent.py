@@ -392,6 +392,7 @@ def _transform_observations(
             observations[i][HeartsEnv.OBS_KEY] = utils.apply_obs_transforms(
                 obs_transforms,
                 obs[HeartsEnv.OBS_KEY],
+                0,
                 uuid_,
             )
     else:
@@ -399,6 +400,7 @@ def _transform_observations(
             observations[i] = utils.apply_obs_transforms(
                 obs_transforms,
                 obs,
+                0,
                 uuid_,
             )
 

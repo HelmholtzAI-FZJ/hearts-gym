@@ -16,11 +16,12 @@ class ObsTransform:
     Subclasses must implement the `transform` method.
     """
 
-    def transform(self, obs: Any, uuid: UUID) -> Any:
+    def transform(self, obs: Any, player_index: int, uuid: UUID) -> Any:
         """Return a new observation after applying a transformation.
 
         Args:
             obs (Any): Observation to transform.
+            player_index (int): Index of the player observing.
             uuid (UUID): A uniquely identifying ID of the game
                 being observed.
 
@@ -50,6 +51,7 @@ class ObsTransform:
 def apply_obs_transforms(
         obs_transforms: List[ObsTransform],
         obs: Observation,
+        player_index: int,
         uuid: UUID,
 ) -> Any:
     """Return the given observation received after applying all
@@ -59,6 +61,7 @@ def apply_obs_transforms(
         obs_transforms (List[ObsTransform]): Transformations to apply.
         obs (Observation): The observation before
             any transformation.
+        player_index (int): Index of the player observing.
         uuid (UUID): A uniquely identifying ID of the game
             being observed.
 
@@ -71,5 +74,5 @@ def apply_obs_transforms(
         obs['cards'] = np.array(cards)
 
     for transform in obs_transforms:
-        obs = transform(obs, uuid)
+        obs = transform(obs, player_index, uuid)
     return obs

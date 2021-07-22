@@ -346,7 +346,8 @@ class HeartsEnv(MultiAgentEnv):
             'cards': cards_state,
             'leading_hearts_allowed': self.game.leading_hearts_allowed,
         }
-        obs = apply_obs_transforms(self._obs_transforms, obs, self.uuid)
+        obs = apply_obs_transforms(
+            self._obs_transforms, obs, player_index, self.uuid)
 
         if self.mask_actions:
             obs = {self.OBS_KEY: obs}
