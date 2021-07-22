@@ -39,7 +39,7 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
 logfile = pathlib.Path("logs", f"logfile_{os.getpid()}.log").open("w")
 
 
-class RulebasedNext(DeterministicPolicyImpl):
+class RulebasedV2(DeterministicPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         # Collect some observations about the current round
         cards_on_hand = np.array(self.game.hand)
@@ -114,7 +114,7 @@ class RulebasedNext(DeterministicPolicyImpl):
 
 
 
-class RulebasedPrevious(DeterministicPolicyImpl):
+class RulebasedV1(DeterministicPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         # Collect some observations about the current round
         cards_on_hand = np.array(self.game.hand)
