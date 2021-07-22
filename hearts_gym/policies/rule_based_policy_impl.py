@@ -17,7 +17,19 @@ import textwrap
 import pathlib
 import numpy as np
 
-from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE, p_gets_trick, DeepState
+from hearts_gym.utils.logic import (
+    CARDS,
+    Ownerships,
+    Probability,
+    Certainty,
+    filter_cards_above,
+    gets_trick,
+    ALWAYS,
+    NEVER,
+    MAYBE,
+    p_gets_trick,
+    DeepState,
+)
 
 
 class LoggingMixin:
@@ -51,7 +63,7 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl, LoggingMixin):
 class RulebasedV3(RuleBasedPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
-        p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
+        p_get_trick, p_avoid_trick, _ = ds.calculate_get_avoid_probabilities()
 
         # What would be the penalties of the possible actions?
         penalty_lower_bound = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
@@ -69,11 +81,15 @@ class RulebasedV3(RuleBasedPolicyImpl):
         action_card = ds.legal_cards_to_play[action_index]
 
         self.log(textwrap.dedent(f"""
-        table  : {ds.cards_on_table}
-        actions: {ds.legal_cards_to_play}
-        p_get  : {p_get_trick.tolist()}
-        p_avoid: {p_avoid_trick.tolist()}
-        action : Card({action_card.suit}, {action_card.rank})
+        table       {ds.cards_on_table}
+        actions     {ds.legal_cards_to_play}
+        unseen      {ds.unseen_cards}
+        p_get       {p_get_trick.tolist()}
+        p_avoid     {p_avoid_trick.tolist()}
+        values      {tuple(action_card_value)}
+        penalty_lb  {penalty_lower_bound}
+        objective   {objective}
+        action      Card({action_card.suit}, {action_card.rank})
         """))
 
         return ds.legal_indices_to_play[action_index]
@@ -82,7 +98,7 @@ class RulebasedV3(RuleBasedPolicyImpl):
 class RulebasedV2(RuleBasedPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
-        p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
+        p_get_trick, p_avoid_trick, _ = ds.calculate_get_avoid_probabilities()
 
         # What would be the penalties of the possible actions?
         penalty_lower_bound = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
