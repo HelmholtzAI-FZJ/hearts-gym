@@ -211,3 +211,30 @@ def expected_inbound_penalty(
     card_penalties = np.array(card_penalties)
     p_drawn = n_inbound / len(card_penalties)
     return card_penalties * p_drawn
+
+
+def get_card_values(
+    cards_of_interest: List[Card],
+    cards_on_hand: List[Card],
+    cards_on_table: List[Card],
+    cards_by_others: List[Card],
+) -> np.ndarray:
+    values = np.linspace(0.1, -0.1, len(cards_of_interest))
+    for i, c in enumerate(cards_of_interest):
+        # Rule 1: Never lead with an Ace
+        if len(cards_on_table) == 0 and c.rank == Card.RANKS.index("A"):
+            # Increasing the "value" of the card means that it'll be less like to be played.
+            values[i] += 0.5
+
+        # Rule 2: Hold onto low hearts
+        # This is already applied via linspace ranking from above.
+
+        # Rule 3: Try keeping the ♥A.
+        if c.suit in { Card.SUIT_HEART } and c.rank == Card.RANKS.index("A"):
+            values[i] += 0.5
+
+        # Rule 4: Void ♠ or 💎 early.
+        if c.suit in { Card.SUIT_CLUB, Card.SUIT_DIAMOND}:
+            # Moving them down by 0.1 will put them below cards of other suits.
+            values[i] -= 0.2
+    return values
