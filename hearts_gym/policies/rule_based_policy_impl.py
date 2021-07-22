@@ -94,12 +94,14 @@ class RulebasedNext(DeterministicPolicyImpl):
             # Take the action that minimizes the expected penalties.
             action_index = np.argmin(penalty_outcome)
 
+        action_card = legal_cards_to_play[action_index]
+
         logfile.write(textwrap.dedent(f"""
         table  : {cards_on_table}
         actions: {legal_cards_to_play}
         p_get  : {p_get_trick.tolist()}
         p_avoid: {p_avoid_trick.tolist()}
-        action : {legal_cards_to_play[action_index]}
+        action : Card({action_card.suit}, {action_card.rank})
         """))
         logfile.flush()
 
