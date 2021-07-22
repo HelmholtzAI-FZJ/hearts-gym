@@ -18,7 +18,8 @@ import ray
 from ray.rllib.agents.trainer import COMMON_CONFIG
 from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.utils.typing import PolicyID, TensorType, TrainerConfigDict
-from ray.tune.registry import has_trainable
+from ray.tune.error import TuneError
+from ray.tune.registry import validate_trainable
 from ray.tune.result import EXPR_PARAM_PICKLE_FILE
 from ray.tune.trainable import Trainable
 
@@ -439,8 +440,13 @@ def main() -> None:
 
         algorithm_name_dir = exp_dir.parent
         algorithm_name = algorithm_name_dir.stem
-        if algorithm_name_dir.is_dir() and has_trainable(algorithm_name):
-            algorithm = algorithm_name
+        if algorithm_name_dir.is_dir():
+            try:
+                validate_trainable(algorithm_name)
+            except TuneError:
+                pass
+            else:
+                algorithm = algorithm_name
     else:
         has_params = False
 
