@@ -391,14 +391,14 @@ def _transform_observations(
         for (i, (obs, uuid_)) in enumerate(zip(observations, uuids)):
             observations[i][HeartsEnv.OBS_KEY] = utils.apply_obs_transforms(
                 obs_transforms,
-                observations[i][HeartsEnv.OBS_KEY],
+                obs[HeartsEnv.OBS_KEY],
                 uuid_,
             )
     else:
         for (i, (obs, uuid_)) in enumerate(zip(observations, uuids)):
             observations[i] = utils.apply_obs_transforms(
                 obs_transforms,
-                observations[i],
+                obs,
                 uuid_,
             )
 
