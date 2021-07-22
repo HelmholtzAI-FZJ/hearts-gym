@@ -27,7 +27,7 @@ checkpoints due to arbitrary code execution. Trade-off between safety
 and convenience.
 """
 
-# "tf", "torch", or "jax", whichever is available (in that order).
+# By default: "tf", "torch", or "jax", whichever is available (in that order).
 framework: str = utils.DEFAULT_FRAMEWORK
 
 custom_rulebased_policies: Dict[str, type] = {}
