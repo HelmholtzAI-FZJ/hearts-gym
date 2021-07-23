@@ -1267,7 +1267,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 raise ValueError('received empty data')
         except Exception:
             self.server.print_log(
-                f'Lost client {self.hash_ip(client.address)}.',
+                f'Lost client {self.server.hash_ip(client.address)}.',
                 logging.WARNING,
             )
             client, data = self._replace_with_bot(player_index)
@@ -1327,7 +1327,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                 )
             )
             self.server.logger.warning(
-                f'Client {self.hash_ip(client.address)} did not send '
+                f'Client {self.server.hash_ip(client.address)} did not send '
                 f'action length. Closing connection...'
             )
             client, data_shard = self._replace_with_bot(player_index)
@@ -1349,8 +1349,8 @@ class HeartsRequestHandler(BaseRequestHandler):
                 )
             )
             self.server.logger.warning(
-                f'Client {self.hash_ip(client.address)} sent garbled action '
-                f'length. Closing connection...'
+                f'Client {self.server.hash_ip(client.address)} sent garbled '
+                f'action length. Closing connection...'
             )
             client, data = self._replace_with_bot(player_index)
 
@@ -1399,7 +1399,7 @@ class HeartsRequestHandler(BaseRequestHandler):
                     'Actions had a different length than declared.',
                 )
                 self.server.logger.warning(
-                    f'Client {self.hash_ip(client.address)} declared '
+                    f'Client {self.server.hash_ip(client.address)} declared '
                     f'different actions length. Closing connection...'
                 )
                 client, data_shard = self._replace_with_bot(player_index)
