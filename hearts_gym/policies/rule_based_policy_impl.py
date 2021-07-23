@@ -17,7 +17,19 @@ import textwrap
 import pathlib
 import numpy as np
 
-from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE, p_gets_trick, DeepState
+from hearts_gym.utils.logic import (
+    CARDS,
+    Ownerships,
+    Probability,
+    Certainty,
+    filter_cards_above,
+    gets_trick,
+    ALWAYS,
+    NEVER,
+    MAYBE,
+    p_gets_trick,
+    DeepState,
+)
 
 
 class LoggingMixin:
@@ -48,10 +60,54 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl, LoggingMixin):
     pass
 
 
+class RulebasedV4(RuleBasedPolicyImpl):
+    def compute_action(self, obs: TensorType) -> Action:
+        ds = DeepState(self.game)
+        # o = Ownerships.from_trick(
+        #     hand=ds.cards_on_hand,
+        #     trick=ds.cards_on_table,
+        #     unseen=ds.unseen_cards,
+        #     played=set(CARDS) - set(ds.cards_on_hand) - set(ds.cards_on_table) - set(ds.unseen_cards)
+        # )
+        # TODO: fetch vectors of relevant card ownership probabilities for following players
+        # TODO: sum them to get the probabilities that these cards are in their hands
+        # TODO: Use these more accurate ownership probabilities for calculating get/avoid/penalty arrays.
+
+        p_get_trick, p_avoid_trick, penalty_inbound = ds.calculate_get_avoid_probabilities()
+
+        # What would be the penalties of the possible actions?
+        penalty_definite = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
+        penalty_expected = p_get_trick * penalty_inbound
+        # Penalties are int-valued, so we can use values <1 to sort actions of the same penalty based on card "value":
+        action_card_value = np.linspace(0.01, 0, ds.A)
+        # NOTE: The get_card_values function is an alternative to the simple rank-order.
+
+        action_index = None
+        objective = penalty_definite + penalty_expected + action_card_value
+        action_index = np.random.choice(np.argwhere(objective == objective.min())[:, 0])
+
+        action_card = ds.legal_cards_to_play[action_index]
+
+        self.log(textwrap.dedent(f"""
+        table       {ds.cards_on_table}
+        actions     {ds.legal_cards_to_play}
+        unseen      {ds.unseen_cards}
+        p_get       {p_get_trick.tolist()}
+        p_avoid     {p_avoid_trick.tolist()}
+        values      {tuple(action_card_value)}
+        penalty_de  {penalty_definite}
+        penalty_ex  {penalty_expected}
+        objective   {objective}
+        action      Card({action_card.suit}, {action_card.rank})
+        """))
+
+        return ds.legal_indices_to_play[action_index]
+
+
 class RulebasedV3(RuleBasedPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
-        p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
+        p_get_trick, p_avoid_trick, _ = ds.calculate_get_avoid_probabilities()
 
         # What would be the penalties of the possible actions?
         penalty_lower_bound = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
@@ -69,11 +125,15 @@ class RulebasedV3(RuleBasedPolicyImpl):
         action_card = ds.legal_cards_to_play[action_index]
 
         self.log(textwrap.dedent(f"""
-        table  : {ds.cards_on_table}
-        actions: {ds.legal_cards_to_play}
-        p_get  : {p_get_trick.tolist()}
-        p_avoid: {p_avoid_trick.tolist()}
-        action : Card({action_card.suit}, {action_card.rank})
+        table       {ds.cards_on_table}
+        actions     {ds.legal_cards_to_play}
+        unseen      {ds.unseen_cards}
+        p_get       {p_get_trick.tolist()}
+        p_avoid     {p_avoid_trick.tolist()}
+        values      {tuple(action_card_value)}
+        penalty_lb  {penalty_lower_bound}
+        objective   {objective}
+        action      Card({action_card.suit}, {action_card.rank})
         """))
 
         return ds.legal_indices_to_play[action_index]
@@ -82,7 +142,7 @@ class RulebasedV3(RuleBasedPolicyImpl):
 class RulebasedV2(RuleBasedPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
-        p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
+        p_get_trick, p_avoid_trick, _ = ds.calculate_get_avoid_probabilities()
 
         # What would be the penalties of the possible actions?
         penalty_lower_bound = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards

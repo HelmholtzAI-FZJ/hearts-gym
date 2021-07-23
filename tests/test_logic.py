@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 from hearts_gym.envs.hearts_game import Card
-from hearts_gym.utils.logic import Probability, Certainty, ALWAYS, NEVER, MAYBE, expected_inbound_penalty, filter_cards_above, gets_trick, p_gets_trick
+from hearts_gym.utils.logic import CARDS, Ownerships, Player, Probability, Certainty, ALWAYS, NEVER, MAYBE, expected_inbound_penalty, filter_cards_above, gets_trick, p_gets_trick
 
 # Suits
 A, B, C, D = 0, 1, 2, 3
@@ -110,19 +110,20 @@ def test_gets_trick_as_first():
         card=C10,
         table_cards=[],
         cards_by_others=[AK, BA, C9],
-    ) is ALWAYS
+    ) == (ALWAYS, 1)
 
     assert gets_trick(
         card=C10,
         table_cards=[],
         cards_by_others=[AK, BA, CJ],
-    ) is NEVER
+    ) == (NEVER, 0)
 
     assert gets_trick(
         card=C10,
         table_cards=[],
         cards_by_others=[AK, BA, CJ, C8],
-    ) == (3/4 * 3/4 * 3/4)
+    ) == ((3/4 * 3/4 * 3/4), 1)
+    # IF we get the trick it WILL include that C8 card.
     pass
 
 def test_gets_trick_as_intermediate():
@@ -130,31 +131,33 @@ def test_gets_trick_as_intermediate():
         card=A5,
         table_cards=[A4, D6],
         cards_by_others=[D6, A3, A2, C5, CK],
-    ) is ALWAYS
+    ) == (ALWAYS, 2/5*1)
 
     assert gets_trick(
         card=A5,
         table_cards=[A7, D6],
         cards_by_others=[D6, A3, A2, C5, CK],
-    ) is NEVER
+    ) == (NEVER, 0)
 
     assert gets_trick(
         card=BA,
         table_cards=[A7, D6],
         cards_by_others=[B2],
-    ) is NEVER
+    ) == (NEVER, 0)
 
     assert gets_trick(
         card=A5,
         table_cards=[A7, D6],
         cards_by_others=[A9],
-    ) is NEVER
+    ) == (NEVER, 0)
 
     assert gets_trick(
         card=A5,
         table_cards=[A2, D6],
         cards_by_others=[A9, A3, B2, C7],
-    ) == 3/4
+    ) == (3/4, 1/3)
+    # Three cards will make us get the trick.
+    # One of them has a penalty.
     pass
 
 
@@ -163,25 +166,25 @@ def test_gets_trick_as_last():
         card=B10,
         table_cards=[A4, CK, D6],
         cards_by_others=[D6, A3, A2, C5],
-    ) is NEVER
+    ) == (NEVER, 0)
 
     assert gets_trick(
         card=A7,
         table_cards=[A4, CK, D6],
         cards_by_others=[D6, A3, CA, C5],
-    ) is ALWAYS
+    ) == (ALWAYS, 0)
 
     assert gets_trick(
         card=A7,
         table_cards=[A4, CK, D6],
         cards_by_others=[D6, A3, A8, C5],
-    ) is ALWAYS
+    ) == (ALWAYS, 0)
 
     assert gets_trick(
         card=A7,
         table_cards=[A4, CK, D6],
         cards_by_others=[A3, A8, C5],
-    ) is ALWAYS
+    ) == (ALWAYS, 0)
     pass
 
 
@@ -209,3 +212,25 @@ def test_expected_inbound_penalty():
         n_inbound=2
     ), [0, 0, 0.5, 1])
     pass
+
+
+class TestOwnership:
+    def test_init(self):
+        deck = set(CARDS)
+        hand = {Card(1,2), Card(0,2)}
+        trick = {Card(0, 3)}
+        played = {Card(2, 5), Card(2, 10)}
+        o = Ownerships.from_trick(
+            hand=hand,
+            trick=trick,
+            played=played,
+            unseen=deck - hand - trick - played
+        )
+        assert o.has_suit(Player.US, 0) == 1
+        assert o.has_suit(Player.US, 1) == 1
+        assert o.has_suit(Player.US, 2) == 0
+        assert o.has_card_above(Player.US, Card(1, 0)) == 1
+        assert o.has_card_above(Player.US, Card(0, 7)) == 0
+        assert o.has_card(Player.P1, Card(3, 10)) == 1/3
+        assert o.has_card(Player.P2, Card(2, 5)) == 0
+        pass
