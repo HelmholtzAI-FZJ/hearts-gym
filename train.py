@@ -130,6 +130,7 @@ def main() -> None:
         checkpoint_at_end=True,
         scheduler=conf.scheduler,
         resume=conf.resume,
+        checkpoint_freq=1,
         restore=conf.checkpoint_path,
     )
 
