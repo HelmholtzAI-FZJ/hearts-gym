@@ -242,6 +242,19 @@ class HeartsServer(TCPServer):
 
         raise TypeError('unknown seed type')
 
+    @staticmethod
+    def hash_ip(client_address: Address) -> Tuple[int, int]:
+        """Return the given address with its IP part hashed.
+
+        Args:
+            client_address (Address): Address whose IP part should
+                be hashed.
+
+        Returns:
+            Tuple[int, int]: Address with its IP part hashed.
+        """
+        return (hash(client_address[0]),) + client_address[1:]
+
     def _has_client_address(self, client_address: Address) -> bool:
         """Return whether the given client address is already registered.
 
@@ -264,7 +277,7 @@ class HeartsServer(TCPServer):
             request: Request,
             client_address: Address,
     ) -> bool:
-        self.logger.info(f'Verifying {hash(client_address)}...')
+        self.logger.info(f'Verifying {self.hash_ip(client_address)}...')
         with self._client_change_lock:
             if (
                     len(self.clients) >= self._max_num_clients
@@ -442,11 +455,13 @@ class HeartsServer(TCPServer):
             self._set_timeout_failable(client, prev_timeout, replace_with_bot)
             self._send_failable(client, client_error_msg, replace_with_bot)
             self.logger.warning(
-                f'Client {hash(client.address)} did not respond in time.')
+                f'Client {self.hash_ip(client.address)} did not respond '
+                f'in time.'
+            )
             self.unregister_client(client, replace_with_bot)
             return None
         except Exception:
-            self.logger.warning(f'Lost client {hash(client.address)}.')
+            self.logger.warning(f'Lost client {self.hash_ip(client.address)}.')
             self.unregister_client(client, replace_with_bot)
             return None
 
@@ -528,8 +543,8 @@ class HeartsServer(TCPServer):
                 replace_with_bot,
             )
             self.logger.warning(
-                f'Client {hash(client.address)} did not send message length. '
-                f'Closing connection...'
+                f'Client {self.hash_ip(client.address)} did not send '
+                f'message length. Closing connection...'
             )
             self.unregister_client(client, replace_with_bot)
             return None
@@ -549,8 +564,8 @@ class HeartsServer(TCPServer):
                 replace_with_bot,
             )
             self.logger.warning(
-                f'Client {hash(client.address)} sent garbled message length. '
-                f'Closing connection...'
+                f'Client {self.hash_ip(client.address)} sent garbled '
+                f'message length. Closing connection...'
             )
             self.unregister_client(client, replace_with_bot)
             return None
@@ -601,8 +616,8 @@ class HeartsServer(TCPServer):
                 'Declared name length is too long.',
             )
             self.logger.warning(
-                f'Client {hash(client.address)} declared too long name. '
-                f'Closing connection...'
+                f'Client {self.hash_ip(client.address)} declared too long '
+                f'name. Closing connection...'
             )
             self.unregister_client(client, False)
             return False
@@ -632,8 +647,8 @@ class HeartsServer(TCPServer):
                 'Message had a different length than declared.',
             )
             self.logger.warning(
-                f'Client {hash(client.address)} declared different message '
-                f'length. Closing connection...'
+                f'Client {self.hash_ip(client.address)} declared different '
+                f'message length. Closing connection...'
             )
             self.unregister_client(client, False)
             return False
@@ -659,7 +674,9 @@ class HeartsServer(TCPServer):
                 i += 1
 
         self.logger.info(
-            f'Client {hash(client.address)} is now called "{client.name}".')
+            f'Client {self.hash_ip(client.address)} is now '
+            f'called "{client.name}".'
+        )
         return True
 
     def _receive_ok(
@@ -840,7 +857,7 @@ class HeartsServer(TCPServer):
         try:
             return client.request.gettimeout(), True
         except Exception:
-            self.logger.warning(f'Lost client {hash(client.address)}.')
+            self.logger.warning(f'Lost client {self.hash_ip(client.address)}.')
             self.unregister_client(client, replace_with_bot)
             return None, False
 
@@ -871,7 +888,7 @@ class HeartsServer(TCPServer):
             client.request.settimeout(timeout_sec)
             return True
         except Exception:
-            self.logger.warning(f'Lost client {hash(client.address)}.')
+            self.logger.warning(f'Lost client {self.hash_ip(client.address)}.')
             self.unregister_client(client, replace_with_bot)
             return False
 
@@ -941,7 +958,7 @@ class HeartsServer(TCPServer):
             client.request.sendall(data)
             return True
         except Exception:
-            self.logger.warning(f'Lost client {hash(client.address)}.')
+            self.logger.warning(f'Lost client {self.hash_ip(client.address)}.')
             self.unregister_client(client, replace_with_bot)
             return False
 
@@ -1080,7 +1097,7 @@ class HeartsServer(TCPServer):
         if not client.is_registered:
             return
         self.logger.info(
-            f'Starting waiter thread for {hash(client.address)}...')
+            f'Starting waiter thread for {self.hash_ip(client.address)}...')
         with self._client_change_lock:
             thread = Thread(
                 target=self._wait_for_players,
@@ -1108,7 +1125,7 @@ class HeartsServer(TCPServer):
         ):
             self.clients.clear()
 
-        self.logger.info(f'Registering {hash(client_address)}...')
+        self.logger.info(f'Registering {self.hash_ip(client_address)}...')
         client = self.register_client(request, client_address)
         if client is None:
             self.logger.warning('Failed.')
@@ -1116,7 +1133,9 @@ class HeartsServer(TCPServer):
             return
 
         self.print_log(
-            f'Registered {hash(client_address)} at index {client.player_index}.')
+            f'Registered {self.hash_ip(client_address)} at '
+            f'index {client.player_index}.'
+        )
 
         successful = self.receive_name(client)
         if not successful:
@@ -1248,7 +1267,9 @@ class HeartsRequestHandler(BaseRequestHandler):
                 raise ValueError('received empty data')
         except Exception:
             self.server.print_log(
-                f'Lost client {hash(client.address)}.', logging.WARNING)
+                f'Lost client {self.hash_ip(client.address)}.',
+                logging.WARNING,
+            )
             client, data = self._replace_with_bot(player_index)
             return client, data, False
 
@@ -1306,8 +1327,8 @@ class HeartsRequestHandler(BaseRequestHandler):
                 )
             )
             self.server.logger.warning(
-                f'Client {hash(client.address)} did not send action length. '
-                f'Closing connection...'
+                f'Client {self.hash_ip(client.address)} did not send '
+                f'action length. Closing connection...'
             )
             client, data_shard = self._replace_with_bot(player_index)
 
@@ -1328,8 +1349,8 @@ class HeartsRequestHandler(BaseRequestHandler):
                 )
             )
             self.server.logger.warning(
-                f'Client {hash(client.address)} sent garbled action length. '
-                f'Closing connection...'
+                f'Client {self.hash_ip(client.address)} sent garbled action '
+                f'length. Closing connection...'
             )
             client, data = self._replace_with_bot(player_index)
 
@@ -1378,8 +1399,8 @@ class HeartsRequestHandler(BaseRequestHandler):
                     'Actions had a different length than declared.',
                 )
                 self.server.logger.warning(
-                    f'Client {hash(client.address)} declared different '
-                    f'actions length. Closing connection...'
+                    f'Client {self.hash_ip(client.address)} declared '
+                    f'different actions length. Closing connection...'
                 )
                 client, data_shard = self._replace_with_bot(player_index)
                 successful = False
