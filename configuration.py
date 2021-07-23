@@ -116,6 +116,9 @@ model_config = {
 
 # Tune config
 
+checkpoint_freq: int = 2000
+"""How many iterations between checkpoints."""
+
 opt_metric: str = 'episode_reward_mean'
 opt_mode: str = 'max'
 

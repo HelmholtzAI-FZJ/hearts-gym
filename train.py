@@ -127,6 +127,7 @@ def main() -> None:
         metric=conf.opt_metric,
         mode=conf.opt_mode,
         local_dir=conf.RESULTS_DIR,
+        checkpoint_freq=conf.checkpoint_freq,
         checkpoint_at_end=True,
         scheduler=conf.scheduler,
         resume=conf.resume,
