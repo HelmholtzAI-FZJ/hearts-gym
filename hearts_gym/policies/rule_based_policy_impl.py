@@ -16,11 +16,23 @@ import enum
 import textwrap
 import pathlib
 import numpy as np
-import os
 
 from hearts_gym.utils.logic import Probability, Certainty, gets_trick, ALWAYS, NEVER, MAYBE, p_gets_trick, DeepState
 
-class RuleBasedPolicyImpl(DeterministicPolicyImpl):
+
+class LoggingMixin:
+    handles = {}
+
+    def log(self, message):
+        if not id(self) in self.handles:
+            fp = pathlib.Path("logs", f"{self.__class__.__name__}_{id(self)}.log")
+            LoggingMixin.handles[id(self)] = fp.open("w")
+        logfile = LoggingMixin.handles[id(self)]
+        logfile.write(message)
+        logfile.flush()
+        return
+
+class RuleBasedPolicyImpl(DeterministicPolicyImpl, LoggingMixin):
     """A rule-based policy implementation yielding deterministic actions
     for given observations.
 
@@ -36,10 +48,38 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl):
     pass
 
 
-logfile = pathlib.Path("logs", f"logfile_{os.getpid()}.log").open("w")
+class RulebasedV3(RuleBasedPolicyImpl):
+    def compute_action(self, obs: TensorType) -> Action:
+        ds = DeepState(self.game)
+        p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
+
+        # What would be the penalties of the possible actions?
+        penalty_lower_bound = sum(ds.penalty_on_table) + p_get_trick * ds.penalty_of_action_cards
+        # TODO: Determine maximum penalty of the incoming cards
+        # TODO: Determine expected penalty
+
+        # Penalties are int-valued, so we can use values <1 to sort actions of the same penalty based on card "value":
+        action_card_value = np.linspace(0.1, 0, ds.A)
+        # TODO: Write helper function to determine action card values with heuristics.
+
+        action_index = None
+        objective = penalty_lower_bound + action_card_value
+        action_index = np.random.choice(np.argwhere(objective == objective.min())[:, 0])
+
+        action_card = ds.legal_cards_to_play[action_index]
+
+        self.log(textwrap.dedent(f"""
+        table  : {ds.cards_on_table}
+        actions: {ds.legal_cards_to_play}
+        p_get  : {p_get_trick.tolist()}
+        p_avoid: {p_avoid_trick.tolist()}
+        action : Card({action_card.suit}, {action_card.rank})
+        """))
+
+        return ds.legal_indices_to_play[action_index]
 
 
-class RulebasedV2(DeterministicPolicyImpl):
+class RulebasedV2(RuleBasedPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
         p_get_trick, p_avoid_trick = ds.calculate_get_avoid_probabilities()
@@ -71,20 +111,19 @@ class RulebasedV2(DeterministicPolicyImpl):
 
         action_card = ds.legal_cards_to_play[action_index]
 
-        logfile.write(textwrap.dedent(f"""
+        self.log(textwrap.dedent(f"""
         table  : {ds.cards_on_table}
         actions: {ds.legal_cards_to_play}
         p_get  : {p_get_trick.tolist()}
         p_avoid: {p_avoid_trick.tolist()}
         action : Card({action_card.suit}, {action_card.rank})
         """))
-        logfile.flush()
 
         return ds.legal_indices_to_play[action_index]
 
 
 
-class RulebasedV1(DeterministicPolicyImpl):
+class RulebasedV1(RuleBasedPolicyImpl):
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
 
