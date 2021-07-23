@@ -61,6 +61,7 @@ class RuleBasedPolicyImpl(DeterministicPolicyImpl, LoggingMixin):
 
 
 class RulebasedV4(RuleBasedPolicyImpl):
+    """Considers average penalty of unseen defense cards in the objective function."""
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
         # o = Ownerships.from_trick(
@@ -82,7 +83,6 @@ class RulebasedV4(RuleBasedPolicyImpl):
         action_card_value = np.linspace(0.01, 0, ds.A)
         # NOTE: The get_card_values function is an alternative to the simple rank-order.
 
-        action_index = None
         objective = penalty_definite + penalty_expected + action_card_value
         action_index = np.random.choice(np.argwhere(objective == objective.min())[:, 0])
 
@@ -105,6 +105,7 @@ class RulebasedV4(RuleBasedPolicyImpl):
 
 
 class RulebasedV3(RuleBasedPolicyImpl):
+    """Similar to `RulebasedV2` but the heuristic is condensed into an objective function."""
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
         p_get_trick, p_avoid_trick, _ = ds.calculate_get_avoid_probabilities()
@@ -118,7 +119,6 @@ class RulebasedV3(RuleBasedPolicyImpl):
         action_card_value = np.linspace(0.1, 0, ds.A)
         # TODO: Write helper function to determine action card values with heuristics.
 
-        action_index = None
         objective = penalty_lower_bound + action_card_value
         action_index = np.random.choice(np.argwhere(objective == objective.min())[:, 0])
 
@@ -140,6 +140,7 @@ class RulebasedV3(RuleBasedPolicyImpl):
 
 
 class RulebasedV2(RuleBasedPolicyImpl):
+    """Uses full probability vectors and considers value and penalty of action cards when selecting the action."""
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
         p_get_trick, p_avoid_trick, _ = ds.calculate_get_avoid_probabilities()
@@ -184,6 +185,7 @@ class RulebasedV2(RuleBasedPolicyImpl):
 
 
 class RulebasedV1(RuleBasedPolicyImpl):
+    """Sparsely calculates take/defend probabilities for trivial cases and uses them in heuristics."""
     def compute_action(self, obs: TensorType) -> Action:
         ds = DeepState(self.game)
 
