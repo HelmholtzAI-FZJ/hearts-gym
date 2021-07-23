@@ -1778,6 +1778,28 @@ class HeartsRequestHandler(BaseRequestHandler):
                 self._index_to_name,
                 self.server.num_illegals,
             )
+
+            results_table = results_table.split('\n')
+            results_table[0] = results_table[0] + ' score'
+            results_table[1] = results_table[1] + '--------'
+            for (i, (total_placements, total_penalty)) in enumerate(zip(
+                    self.server.total_placements,
+                    self.server.total_penalties,
+            )):
+                total_placements = list(map(
+                    lambda x: x / self.server.num_games,
+                    total_placements,
+                ))
+                score = (
+                    0.5 * total_placements[0]
+                    + 0.3 * total_placements[1]
+                    + 0.15 * total_placements[2]
+                    - 0.1 * total_placements[3]
+                    - 0.4 * total_penalty / self.server.num_games / 26
+                ) * self.server.num_games
+                results_table[i + 2] = f'{results_table[i + 2]} {score:.3f}'
+            results_table = '\n'.join(results_table)
+
             print(results_table)
             results_table: bytes = server_utils.encode_data(
                 '\n' + results_table)
