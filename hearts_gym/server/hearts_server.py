@@ -1687,7 +1687,10 @@ class HeartsRequestHandler(BaseRequestHandler):
         """
         return self.server.clients[player_index].name
 
-    def handle(self) -> None:
+    def _handle(self) -> None:
+        """Loop through multiple games until either only simulated
+        agents are left or the desired amount of games has been played.
+        """
         self.server.num_games = 0
         self.server.stats.clear()
         num_players = len(self.server.clients)
@@ -1814,8 +1817,13 @@ class HeartsRequestHandler(BaseRequestHandler):
                     client, self.OK_TIMEOUT_SEC),
                 (clients[i] for i in range(num_players)),
             )
+        self._finish()
 
-    def finish(self) -> None:
+    def handle(self) -> None:
+        Thread(target=self._handle).start()
+
+    def _finish(self) -> None:
+        """Do standard cleanup."""
         self.server.print_log('Finishing...')
         self._communicators.terminate()
         self._communicators.join()
