@@ -117,7 +117,7 @@ model_config = {
 # Tune config
 
 checkpoint_freq: int = 2000
-"""How many iterations between checkpoints."""
+"""How many iterations between checkpoints. Use 0 to turn off."""
 
 opt_metric: str = 'episode_reward_mean'
 opt_mode: str = 'max'
