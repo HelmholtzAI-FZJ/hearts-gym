@@ -1828,6 +1828,7 @@ class HeartsRequestHandler(BaseRequestHandler):
             self.server.shutdown_request(  # type: ignore[attr-defined]
                 client.request)
 
-        clients.clear()
+        with self.server.client_change_lock:
+            clients.clear()
 
         self.server.print_log('Done.')
