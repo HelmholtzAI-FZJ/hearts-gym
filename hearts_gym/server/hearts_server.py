@@ -173,7 +173,7 @@ class HeartsServer(TCPServer):
         self.num_parallel_games = num_parallel_games
         self.max_num_games = max_num_games
 
-        self._client_change_lock = RLock()
+        self.client_change_lock = RLock()
         self._waiter_threads: Dict[int, Thread] = {}
 
         self.clients: Dict[int, Client] = {}
@@ -278,7 +278,7 @@ class HeartsServer(TCPServer):
             client_address: Address,
     ) -> bool:
         self.logger.info(f'Verifying {self.hash_ip(client_address)}...')
-        with self._client_change_lock:
+        with self.client_change_lock:
             if (
                     len(self.clients) >= self._max_num_clients
                     or (
@@ -333,7 +333,7 @@ class HeartsServer(TCPServer):
         """
         if isinstance(request, tuple):
             request = request[1]
-        with self._client_change_lock:
+        with self.client_change_lock:
             # Sanity check just in case.
             if (
                     len(self.clients) >= self._max_num_clients
@@ -404,7 +404,7 @@ class HeartsServer(TCPServer):
             replace_with_bot (bool): Whether to replace a lost client
                 with a simulated agent.
         """
-        with self._client_change_lock:
+        with self.client_change_lock:
             if not client.is_registered:
                 return
             client_index = client.player_index
@@ -661,7 +661,7 @@ class HeartsServer(TCPServer):
             self.unregister_client(client, True)
             return True
 
-        with self._client_change_lock:
+        with self.client_change_lock:
             client.set_name(data)
             other_names = [
                 other_client.name
@@ -1002,7 +1002,7 @@ class HeartsServer(TCPServer):
         """Fill most remaining free spots with randomly acting agents,
         keeping one spot free.
         """
-        with self._client_change_lock:
+        with self.client_change_lock:
             client_index = self.find_free_index()
             while len(self.clients) < self._max_num_clients - 1:
                 self.register_bot(client_index)
@@ -1098,7 +1098,7 @@ class HeartsServer(TCPServer):
             return
         self.logger.info(
             f'Starting waiter thread for {self.hash_ip(client.address)}...')
-        with self._client_change_lock:
+        with self.client_change_lock:
             thread = Thread(
                 target=self._wait_for_players,
                 args=(client, len(self.clients) == 1),
@@ -1152,7 +1152,7 @@ class HeartsServer(TCPServer):
 
         # We lost a client while joining threads.
         if len(self.clients) < self._max_num_clients:
-            with self._client_change_lock:
+            with self.client_change_lock:
                 for client in self.clients.values():
                     self._start_waiter_thread(client)
             return
