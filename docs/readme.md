@@ -118,8 +118,8 @@ we are using.
 
 ### Training
 
-We use [RLlib](https://docs.ray.io/en/master/rllib.html) with the
-recommended [Tune](https://docs.ray.io/en/master/tune/index.html) API
+We use [RLlib](https://docs.ray.io/en/latest/rllib/index.html) with the
+recommended [Tune](https://docs.ray.io/en/latest/tune/index.html) API
 to manage training experiments.
 
 The main script for starting a training run is `train.py`, started
@@ -240,13 +240,13 @@ dictionaries such as `stop_config`, `model_config` or the main
 `config`. These are used to configure RLlib; possible options and
 default values can be found at the following locations:
 
-| Configuration               | Textual                                                                                                      | Code                                                                             |
-|-----------------------------|--------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
-| `env_config`                | `python -m pydoc hearts_gym.HeartsEnv.__init__`                                                              | `hearts_gym/envs/hearts_env.py`                                                  |
-| `model_config`              | [RLlib Models](https://docs.ray.io/en/master/rllib-models.html#default-model-config-settings)                | `ray/rllib/models/catalog.py`                                                    |
-| `config`                    | [RLlib Training](https://docs.ray.io/en/master/rllib-training.html#common-parameters)                        | `ray/rllib/agents/trainer.py`                                                    |
-| Algorithm-specific `config` | [RLlib Algorithms](https://docs.ray.io/en/master/rllib-algorithms.html) (bottom of each algorithm's section) | `ray/rllib/agents/<algo>/<algo>.py` (replace `<algo>` with the algorithm's name) |
-| `stop_config`               | [Tune Guide](https://docs.ray.io/en/latest/tune/user-guide.html#stopping-trials)                             | `ray/python/ray/tune/tune.py`                                                    |
+| Configuration               | Textual                                                                                                                    | Code                                                                             |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| `env_config`                | `python -m pydoc hearts_gym.HeartsEnv.__init__`                                                                            | `hearts_gym/envs/hearts_env.py`                                                  |
+| `model_config`              | [RLlib Models](https://docs.ray.io/en/latest/rllib/rllib-models.html#default-model-config-settings)                        | `ray/rllib/models/catalog.py`                                                    |
+| `config`                    | [RLlib Training](https://docs.ray.io/en/latest/rllib/rllib-training.html#common-parameters)                                | `ray/rllib/agents/trainer.py`                                                    |
+| Algorithm-specific `config` | [RLlib Algorithms](https://docs.ray.io/en/latest/rllib/rllib-algorithms.html) (bottom of each algorithm's section)         | `ray/rllib/agents/<algo>/<algo>.py` (replace `<algo>` with the algorithm's name) |
+| `stop_config`               | [Tune Stopping/Resuming Guide](https://docs.ray.io/en/latest/tune/tutorials/tune-stopping.html#stopping-with-a-dictionary) | `ray/python/ray/tune/tune.py`                                                    |
 
 ### Rule-based Agents
 
@@ -290,7 +290,7 @@ For less clutter and an easier debugging setup, set the `num_gpus` and
 ### Supported Algorithms
 
 [See the list of RLlib
-algorithms.](https://docs.ray.io/en/master/rllib-algorithms.html)
+algorithms.](https://docs.ray.io/en/latest/rllib/rllib-algorithms.html)
 
 You can filter algorithms via the following rules:
 
@@ -300,10 +300,10 @@ You can filter algorithms via the following rules:
 3. Action masking is supported for algorithms with the "Discrete
    Actions → Yes +parametric" label.
 4. [Auto-wrapping models with an
-   LSTM](https://docs.ray.io/en/master/rllib-models.html#built-in-auto-lstm-and-auto-attention-wrappers)
+   LSTM](https://docs.ray.io/en/latest/rllib/rllib-models.html#built-in-auto-lstm-and-auto-attention-wrappers)
    requires "Model Support" for "+RNN, +LSTM auto-wrapping"
 5. [Auto-wrapping models with an Attention
-   function](https://docs.ray.io/en/master/rllib-models.html#built-in-auto-lstm-and-auto-attention-wrappers)
+   function](https://docs.ray.io/en/latest/rllib/rllib-models.html#built-in-auto-lstm-and-auto-attention-wrappers)
    requires "Model Support" for "+LSTM auto-wrapping, +Attention".
 
 ### Notes on Action Masking
@@ -375,10 +375,10 @@ To avoid this security issue, set `allow_pickles = False` in
 	- https://en.wikipedia.org/wiki/Black_Lady
 	- https://en.wikipedia.org/wiki/Microsoft_Hearts
 - Environments:
-	- https://docs.ray.io/en/latest/rllib-env.html
+	- https://docs.ray.io/en/latest/rllib/rllib-env.html
 	- https://github.com/openai/gym
-	- https://docs.ray.io/en/latest/rllib-models.html
+	- https://docs.ray.io/en/latest/rllib/rllib-models.html
 - Policies:
-	- https://docs.ray.io/en/latest/rllib-concepts.html
+	- https://docs.ray.io/en/latest/rllib/rllib-concepts.html
 - Models:
-	- https://docs.ray.io/en/latest/rllib-models.html
+	- https://docs.ray.io/en/latest/rllib/rllib-models.html
