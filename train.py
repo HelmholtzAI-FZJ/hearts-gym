@@ -3,12 +3,11 @@ Train and evaluate an agent in a multi-agent setting using RLlib.
 """
 
 import os
-from typing import Callable
 
 import ray
 from ray import tune
 from ray.rllib.agents.trainer import COMMON_CONFIG
-from ray.rllib.utils.typing import PolicyID, TrainerConfigDict
+from ray.rllib.utils.typing import TrainerConfigDict
 
 import configuration as conf
 from configuration import (
@@ -19,13 +18,13 @@ from configuration import (
 )
 import hearts_gym
 from hearts_gym import utils
-from hearts_gym.utils.typing import AgentId, Seed
+from hearts_gym.utils.typing import PolicyMappingFn, Seed
 
 
 def configure_eval(
         config: TrainerConfigDict,
         seed: Seed,
-        policy_mapping_fn: Callable[[AgentId], PolicyID],
+        policy_mapping_fn: PolicyMappingFn,
         reset_workers: bool,
 ) -> TrainerConfigDict:
     """Return the given configuration modified so it has settings useful
@@ -35,8 +34,8 @@ def configure_eval(
         config (TrainerConfigDict): RLlib configuration to set up
             for evaluation.
         seed (Seed): Random number generator base seed for evaluation.
-        policy_mapping_fn (Callable[[AgentId], PolicyID]): Policy
-            mapping for evaluation.
+        policy_mapping_fn (PolicyMappingFn): Policy mapping
+            for evaluation.
         reset_workers (bool): Whether workers were reset and can be used
             for evaluation.
 
@@ -105,11 +104,13 @@ def main() -> None:
     utils.maybe_set_up_masked_actions_model(conf.algorithm, conf.config)
 
     if any(
-            conf.eval_policy_mapping_fn(agent_id) == LEARNED_POLICY_ID
+            conf.eval_policy_mapping_fn(agent_id, None, None)
+            == LEARNED_POLICY_ID
             for agent_id in range(conf.num_players)
     ):
         assert (
-            conf.eval_policy_mapping_fn(LEARNED_AGENT_ID) == LEARNED_POLICY_ID
+            conf.eval_policy_mapping_fn(LEARNED_AGENT_ID, None, None)
+            == LEARNED_POLICY_ID
         ), 'agent index does not match policy with name "learned"'
     else:
         print('Warning: you are not evaluating a learned policy; '

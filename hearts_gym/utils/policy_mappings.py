@@ -1,8 +1,8 @@
-from typing import Callable
-
+from ray.rllib.evaluation.episode import Episode
+from ray.rllib.evaluation.rollout_worker import RolloutWorker
 from ray.rllib.utils.typing import PolicyID
 
-from hearts_gym.utils.typing import AgentId
+from hearts_gym.utils.typing import Any, AgentId, Optional, PolicyMappingFn
 
 
 def create_policy_mapping(
@@ -11,7 +11,7 @@ def create_policy_mapping(
         learned_policy_id: PolicyID,
         random_policy_id: PolicyID,
         rulebased_policy_id: PolicyID,
-) -> Callable[[AgentId], PolicyID]:
+) -> PolicyMappingFn:
     """Return a policy mapping function where the given learned agent ID
     may be treated specially.
 
@@ -35,12 +35,15 @@ def create_policy_mapping(
         rulebased_policy_id (PolicyID): ID of the rule-based policy.
 
     Returns:
-        Callable[[AgentId], PolicyID]: Desired policy mapping function.
+        PolicyMappingFn: Desired policy mapping function.
     """
 
     if policy_mapping_name == 'one_learned_rest_random':
         def policy_mapping_one_learned_rest_random(
                 agent_id: AgentId,
+                episode: Optional[Episode],
+                worker: Optional[RolloutWorker],
+                **kwargs: Any,
         ) -> PolicyID:
             """Return the ID for a learned policy for the agent with
             `learned_agent_id`, otherwise for a randomly acting policy.
@@ -59,6 +62,9 @@ def create_policy_mapping(
     elif policy_mapping_name == 'one_learned_rest_rulebased':
         def policy_mapping_one_learned_rest_rulebased(
                 agent_id: AgentId,
+                episode: Optional[Episode],
+                worker: Optional[RolloutWorker],
+                **kwargs: Any,
         ) -> PolicyID:
             """Return the ID for a learned policy for the agent with
             `learned_agent_id`, otherwise for a rule-based policy.
@@ -75,7 +81,12 @@ def create_policy_mapping(
 
         return policy_mapping_one_learned_rest_rulebased
     elif policy_mapping_name == 'all_learned':
-        def policy_mapping_all_learned(_) -> PolicyID:
+        def policy_mapping_all_learned(
+                agent_id: AgentId,
+                episode: Optional[Episode],
+                worker: Optional[RolloutWorker],
+                **kwargs: Any,
+        ) -> PolicyID:
             """Always return a learned policy.
 
             Returns:
@@ -85,7 +96,12 @@ def create_policy_mapping(
 
         return policy_mapping_all_learned
     elif policy_mapping_name == 'all_random':
-        def policy_mapping_all_random(_) -> PolicyID:
+        def policy_mapping_all_random(
+                agent_id: AgentId,
+                episode: Optional[Episode],
+                worker: Optional[RolloutWorker],
+                **kwargs: Any,
+        ) -> PolicyID:
             """Always return a randomly acting policy.
 
             Returns:
@@ -95,7 +111,12 @@ def create_policy_mapping(
 
         return policy_mapping_all_random
     elif policy_mapping_name == 'all_rulebased':
-        def policy_mapping_all_rulebased(_) -> PolicyID:
+        def policy_mapping_all_rulebased(
+                agent_id: AgentId,
+                episode: Optional[Episode],
+                worker: Optional[RolloutWorker],
+                **kwargs: Any,
+        ) -> PolicyID:
             """Always return a rule-based policy.
 
             Returns:

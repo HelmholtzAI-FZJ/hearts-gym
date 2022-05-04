@@ -147,7 +147,8 @@ def configure_remote_eval(
     multiagent_config = utils.get_default(
         eval_config, 'multiagent', COMMON_CONFIG).copy()
     eval_config['multiagent'] = multiagent_config
-    multiagent_config['policy_mapping_fn'] = lambda _: policy_id
+    multiagent_config['policy_mapping_fn'] = \
+        lambda agent_id, episode, worker, **kwargs: policy_id
 
     return eval_config
 

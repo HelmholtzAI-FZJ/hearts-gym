@@ -1,6 +1,9 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
+from ray.rllib.evaluation.episode import Episode
+from ray.rllib.evaluation.rollout_worker import RolloutWorker
+from ray.rllib.utils.typing import PolicyID
 
 Seed = Union[None, int, float, str, bytes, bytearray]
 
@@ -27,3 +30,8 @@ IsDone = bool
 MultiIsDone = Dict[Union[AgentId, str], IsDone]
 Info = Dict[str, Any]
 MultiInfo = Dict[AgentId, Info]
+
+PolicyMappingFn = Callable[
+    [AgentId, Optional[Episode], Optional[RolloutWorker]],
+    PolicyID,
+]

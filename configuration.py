@@ -50,7 +50,7 @@ mask_actions = True
 # The following is a simple example for a custom `policy_mapping_fn`
 # for a four-player game:
 #
-# def policy_mapping_fn(player_index):
+# def policy_mapping_fn(player_index, episode, worker, **kwargs):
 #     return {
 #         0: LEARNED_AGENT_ID,
 #         1: RANDOM_AGENT_ID,

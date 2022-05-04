@@ -8,7 +8,7 @@ import os
 import pickle
 from tempfile import NamedTemporaryFile
 import time
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import numpy as np
 import ray
@@ -27,10 +27,10 @@ from ray.tune.trainable import Trainable
 
 from . import common as utils
 from hearts_gym.utils.typing import (
-    AgentId,
     Info,
     MultiInfo,
     MultiIsDone,
+    PolicyMappingFn,
     Reward,
 )
 
@@ -143,7 +143,7 @@ def get_initial_state(
 
 def get_initial_states(
         agent: Trainable,
-        policy_mapping_fn: Callable[[AgentId], PolicyID],
+        policy_mapping_fn: PolicyMappingFn,
         num_players: int,
 ) -> List[List[TensorType]]:
     """Return the initial recurrent state for each player with their
@@ -153,8 +153,8 @@ def get_initial_states(
 
     Args:
         agent (Trainable): Reinforcement learning trainer/agent.
-        policy_mapping_fn (Callable[[AgentId], PolicyID]): Function
-            mapping player indices to policy IDs.
+        policy_mapping_fn (PolicyMappingFn): Function mapping player
+            indices to policy IDs.
         num_players (int): Amount of players in the game.
 
     Returns:
@@ -163,7 +163,7 @@ def get_initial_states(
     """
     states = []
     for agent_id in range(num_players):
-        policy_id = policy_mapping_fn(agent_id)
+        policy_id = policy_mapping_fn(agent_id, None, None)
         state = get_initial_state(agent, policy_id)
         states.append(state)
     return states
@@ -382,7 +382,7 @@ def _eval_unstable(
         while not is_done['__all__']:
             assert len(obs) == 1, 'encountered multiple ready agents'
             agent_id = next(iter(obs.keys()))
-            policy_id = eval_policy_mapping_fn(agent_id)
+            policy_id = eval_policy_mapping_fn(agent_id, None, None)
             action, state, _ = agent.compute_action(
                 obs[agent_id],
                 states[agent_id],
@@ -480,7 +480,7 @@ def _strlen(x: Any) -> int:
 def create_results_table(
         total_penalties: List[int],
         total_placements: List[List[int]],
-        policy_mapping_fn: Callable[[AgentId], PolicyID],
+        policy_mapping_fn: PolicyMappingFn,
         num_illegals: Optional[List[int]] = None,
 ) -> str:
     """Return a string table summarizing the given results.
@@ -490,14 +490,17 @@ def create_results_table(
             sorted by player index.
         total_placements (List[List[int]]): Total amount of each ranking
             sorted by ranking for each player, sorted by player index.
-        policy_mapping_fn (Callable[[AgentId], PolicyID]): Function
-            mapping agent IDs to policy IDs.
+        policy_mapping_fn (PolicyMappingFn): Function mapping agent IDs
+            to policy IDs.
 
     Returns:
         str: Table-formatted string summarizing the given results.
     """
     num_players = len(total_penalties)
-    agent_names = [policy_mapping_fn(i) for i in range(num_players)]
+    agent_names = [
+        policy_mapping_fn(i, None, None)
+        for i in range(num_players)
+    ]
 
     header = ['policy']
     header.extend(f'# rank {i}' for i in range(1, num_players + 1))
