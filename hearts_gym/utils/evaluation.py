@@ -383,11 +383,11 @@ def _eval_unstable(
             assert len(obs) == 1, 'encountered multiple ready agents'
             agent_id = next(iter(obs.keys()))
             policy_id = eval_policy_mapping_fn(agent_id, None, None)
-            action, state, _ = agent.compute_action(
+            action, state, _ = agent.compute_single_action(
                 obs[agent_id],
                 states[agent_id],
-                prev_actions[agent_id],
-                prev_rewards[agent_id],
+                prev_action=prev_actions[agent_id],
+                prev_reward=prev_rewards[agent_id],
                 policy_id=policy_id,
                 full_fetch=True,
             )
