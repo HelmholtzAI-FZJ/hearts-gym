@@ -106,6 +106,7 @@ class HeartsEnv(MultiAgentEnv):
         self.game = game
         self.mask_actions = mask_actions
         self._obs_transforms = obs_transforms
+        self._agent_ids = set(range(self.game.num_players))
 
         # Each card can either be
         #    0: unknown
@@ -173,6 +174,8 @@ class HeartsEnv(MultiAgentEnv):
 
         from .reward_function import RewardFunction
         self.reward_function = RewardFunction(self)
+
+        super().__init__()
 
     def seed(self, seed: GymSeed = None) -> List[int]:
         """Return a strong seed for this environment's random
