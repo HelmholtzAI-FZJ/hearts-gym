@@ -131,6 +131,7 @@ scheduler = tune.schedulers.FIFOScheduler()
 config = {
     'env': ENV_NAME,
     'env_config': env_config,
+    'disable_env_checking': True,
     'model': model_config,
     'multiagent': {
         'policies_to_train': [LEARNED_POLICY_ID],
