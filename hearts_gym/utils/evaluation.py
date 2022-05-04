@@ -15,7 +15,7 @@ import ray
 from ray.rllib.agents.trainer import COMMON_CONFIG
 from ray.rllib.models import MODEL_DEFAULTS
 from ray.rllib.policy.sample_batch import DEFAULT_POLICY_ID
-from ray.rllib.rollout import RolloutSaver
+from ray.rllib.evaluate import RolloutSaver
 from ray.rllib.utils.spaces import space_utils
 from ray.rllib.utils.typing import (
     List,
@@ -303,7 +303,7 @@ def _eval_stable(
             target_episodes=num_test_games,
             save_info=True,
     ) as saver, contextlib.redirect_stdout(None):
-        ray.rllib.rollout.rollout(
+        ray.rllib.evaluate.rollout(
             agent,
             env_name,
             None,
