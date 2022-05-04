@@ -352,7 +352,11 @@ def _adjust_other_config_for_action_masking(
     masked_actions_model_key = MASKED_ACTIONS_MODEL_KEY
 
     # Validate early because we change some stuff.
-    ModelCatalog._validate_config(config=model_config, framework=framework)
+    _, action_space = get_spaces(
+        config['env'],
+        get_default(config, 'env_config', COMMON_CONFIG))
+    ModelCatalog._validate_config(
+        config=model_config, framework=framework, action_space=action_space)
 
     prev_custom_model = get_default(
         model_config, 'custom_model', MODEL_DEFAULTS)
