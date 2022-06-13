@@ -7,16 +7,18 @@ Also includes a client-server architecture to remotely evaluate local
 agents.
 
 This README file is just a brief introduction to getting started;
-please [check out the documentation](./docs/readme.md) for more
-information.
+please [check out the
+documentation](https://hearts-gym.readthedocs.io/en/latest/readme.html)
+for more information.
 
 ## Getting Started
 
 ### Environment Setup
 
 These minimal instructions assume you are using a Unix-based operating
-system. [The documentation](./docs/readme.md#environment-setup) has
-instructions for other operating systems and catches more failure
+system. [The
+documentation](https://hearts-gym.readthedocs.io/en/latest/readme.html#environment-setup)
+has instructions for other operating systems and catches more failure
 cases. If you encounter problems, please check there.
 
 Set up a Python environment:
@@ -66,8 +68,8 @@ If everything worked correctly, you should see a table summarizing
 test results of your learned agent against other agents printed on
 your terminal. If you see the table, you can ignore any other errors
 displayed by Ray. If you don't see the table, check out [the
-documentation](./docs/readme.md#training) for common errors or submit
-an issue.
+documentation](https://hearts-gym.readthedocs.io/en/latest/readme.html#training)
+for common errors or submit an issue.
 
 ```python
 [...]
@@ -89,7 +91,7 @@ testing took 1.23456789 seconds
 
 Afterwards, modify `configuration.py` to adapt the training to your
 needs. Again, more help can be found in [the
-documentation](./docs/readme.md#configuration).
+documentation](https://hearts-gym.readthedocs.io/en/latest/readme.html#configuration).
 
 ## Evaluation
 
