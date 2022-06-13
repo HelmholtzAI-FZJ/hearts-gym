@@ -35,8 +35,8 @@ installation instructions.
 
 ### Environment Setup
 
-Clone this repository so you can easily modify it, replacing
-`<repo-uri>` with the URI of this repo.
+Clone the Hearts Gym repository so you can easily modify it, replacing
+`<repo-uri>` with the URI of the repo.
 
 ```shell
 git clone <repo-uri>
