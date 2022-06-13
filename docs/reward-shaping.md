@@ -1,6 +1,6 @@
 <link rel="stylesheet" href="style.css">
 
-# Hearts Environment
+# Reward Shaping
 
 This document gives some pointers for helpful variables and functions
 for reward shaping.
